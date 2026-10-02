@@ -8,5 +8,6 @@
   <ItemGroup>
     <ProjectReference Include="..\AFMReforge.Core\AFMReforge.Core.csproj" />
     <ProjectReference Include="..\AFMReforge.Adapter.AFM\AFMReforge.Adapter.AFM.csproj" />
+    <ProjectReference Include="..\AFMReforge.Infrastructure\AFMReforge.Infrastructure.csproj" />
   </ItemGroup>
 </Project>
