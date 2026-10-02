@@ -10,7 +10,7 @@ namespace AFMReforge.Infrastructure;
 /// One row represents one input order plus the response-level context needed to
 /// reconstruct what was stored. It is not the final MarketObservation model.
 /// </summary>
-public sealed class SqliteMarketObservationStore : IMarketObservationStore
+public sealed class SqliteMarketObservationStore : IMarketObservationStore, IMarketObservationQuery
 {
     private readonly string _connectionString;
 
@@ -102,6 +102,120 @@ public sealed class SqliteMarketObservationStore : IMarketObservationStore
         }
 
         transaction.Commit();
+    }
+
+    public IReadOnlyList<MarketRecordView> Query(MarketRecordQuery query)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+
+        if (query.Limit <= 0)
+            throw new ArgumentOutOfRangeException(nameof(query.Limit), "Limit must be greater than zero.");
+        if (query.Offset < 0)
+            throw new ArgumentOutOfRangeException(nameof(query.Offset), "Offset cannot be negative.");
+        if (query.From.HasValue && query.To.HasValue && query.From > query.To)
+            throw new ArgumentException("From must be earlier than or equal to To.");
+
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+
+        var predicates = new List<string>();
+
+        if (query.ItemTypeId is not null)
+        {
+            predicates.Add("ItemTypeId = $itemTypeId");
+            command.Parameters.AddWithValue("$itemTypeId", SerializeValue(query.ItemTypeId));
+        }
+
+        if (query.LocationId is not null)
+        {
+            predicates.Add("LocationId = $locationId");
+            command.Parameters.AddWithValue("$locationId", SerializeValue(query.LocationId));
+        }
+
+        if (query.QualityLevel is not null)
+        {
+            predicates.Add("QualityLevel = $qualityLevel");
+            command.Parameters.AddWithValue("$qualityLevel", SerializeValue(query.QualityLevel));
+        }
+
+        if (query.EnchantmentLevel is not null)
+        {
+            predicates.Add("EnchantmentLevel = $enchantmentLevel");
+            command.Parameters.AddWithValue("$enchantmentLevel", SerializeValue(query.EnchantmentLevel));
+        }
+
+        if (query.ResponseKind.HasValue)
+        {
+            predicates.Add("ResponseKind = $responseKind");
+            command.Parameters.AddWithValue("$responseKind", query.ResponseKind.Value.ToString());
+        }
+
+        if (query.From.HasValue)
+        {
+            predicates.Add("CapturedAt >= $from");
+            command.Parameters.AddWithValue("$from", query.From.Value.ToString("O", CultureInfo.InvariantCulture));
+        }
+
+        if (query.To.HasValue)
+        {
+            predicates.Add("CapturedAt <= $to");
+            command.Parameters.AddWithValue("$to", query.To.Value.ToString("O", CultureInfo.InvariantCulture));
+        }
+
+        command.CommandText = $"""
+            SELECT
+                StorageRecordId,
+                ResponseType,
+                ResponseKind,
+                OperationCode,
+                CapturedAt,
+                OrderId,
+                ItemTypeId,
+                ItemGroupTypeId,
+                LocationId,
+                QualityLevel,
+                EnchantmentLevel,
+                UnitPriceSilver,
+                Amount,
+                AuctionType,
+                Expires,
+                DistanceFee,
+                ResolvedLocation
+            FROM market_observation_records
+            {(predicates.Count == 0 ? "" : "WHERE " + string.Join(" AND ", predicates))}
+            ORDER BY StorageRecordId DESC
+            LIMIT $limit OFFSET $offset;
+            """;
+
+        command.Parameters.AddWithValue("$limit", query.Limit);
+        command.Parameters.AddWithValue("$offset", query.Offset);
+
+        using var reader = command.ExecuteReader();
+        var records = new List<MarketRecordView>();
+
+        while (reader.Read())
+        {
+            records.Add(new MarketRecordView(
+                reader.GetInt64(0),
+                reader.GetString(1),
+                Enum.Parse<MarketResponseKind>(reader.GetString(2)),
+                ReadNullableString(reader, 3),
+                ReadNullableDateTimeOffset(reader, 4),
+                UnserializeString(reader, 5),
+                UnserializeString(reader, 6),
+                UnserializeString(reader, 7),
+                UnserializeString(reader, 8),
+                UnserializeString(reader, 9),
+                UnserializeString(reader, 10),
+                UnserializeString(reader, 11),
+                UnserializeString(reader, 12),
+                UnserializeString(reader, 13),
+                UnserializeString(reader, 14),
+                UnserializeString(reader, 15),
+                UnserializeString(reader, 16)));
+        }
+
+        return records;
     }
 
     public IReadOnlyList<StoredMarketObservationRecord> ReadAll()
@@ -196,6 +310,24 @@ public sealed class SqliteMarketObservationStore : IMarketObservationStore
 
     private static string? ReadNullableString(SqliteDataReader reader, int ordinal)
         => reader.IsDBNull(ordinal) ? null : reader.GetString(ordinal);
+
+    private static DateTimeOffset? ReadNullableDateTimeOffset(SqliteDataReader reader, int ordinal)
+    {
+        var value = ReadNullableString(reader, ordinal);
+        return value is null ? null : DateTimeOffset.Parse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
+    }
+
+    private static string? UnserializeString(SqliteDataReader reader, int ordinal)
+    {
+        var value = ReadNullableString(reader, ordinal);
+        if (value is null || value == "null")
+            return null;
+
+        using var document = JsonDocument.Parse(value);
+        return document.RootElement.ValueKind == JsonValueKind.String
+            ? document.RootElement.GetString()
+            : value;
+    }
 
     internal static string SerializeValue(object? value)
         => value is null ? "null" : JsonSerializer.Serialize(value, value.GetType());
