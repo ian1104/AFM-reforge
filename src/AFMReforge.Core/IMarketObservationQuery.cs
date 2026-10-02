@@ -14,7 +14,8 @@ public sealed record MarketRecordQuery(
     DateTimeOffset? From = null,
     DateTimeOffset? To = null,
     int Limit = 100,
-    int Offset = 0);
+    int Offset = 0,
+    Guid? ObservationId = null);
 
 public sealed record MarketRecordView(
     long StorageRecordId,
@@ -33,4 +34,5 @@ public sealed record MarketRecordView(
     string? AuctionType,
     string? Expires,
     string? DistanceFee,
-    string? ResolvedLocation);
+    string? ResolvedLocation,
+    Guid? ObservationId);
