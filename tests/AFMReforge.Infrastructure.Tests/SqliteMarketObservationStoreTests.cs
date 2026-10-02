@@ -1,6 +1,5 @@
 using AFMReforge.Core;
 using AFMReforge.Infrastructure;
-using AlbionDataAvalonia.Network.Responses;
 
 namespace AFMReforge.Infrastructure.Tests;
 
@@ -17,7 +16,7 @@ public sealed class SqliteMarketObservationStoreTests
         var record = Assert.Single(store.ReadAll());
         Assert.True(record.StorageRecordId > 0);
         Assert.Equal("Offers", record.ResponseKind);
-        Assert.Equal(nameof(AuctionGetOffersResponse), record.ResponseType);
+        Assert.Equal("AuctionGetOffersResponse", record.ResponseType);
         Assert.Equal("42", record.OrderId);
         Assert.Equal(JsonString("T4_MOCK"), record.ItemTypeId);
         Assert.Equal("1001", record.LocationId);
@@ -55,7 +54,7 @@ public sealed class SqliteMarketObservationStoreTests
         using var database = TemporaryDatabase.Create();
         var store = new SqliteMarketObservationStore(database.Path);
         store.Persist(new MarketObservationInput(
-            nameof(AuctionGetOffersResponse), MarketResponseKind.Offers, null,
+            "AuctionGetOffersResponse", MarketResponseKind.Offers, null,
             DateTimeOffset.Parse("2026-10-02T12:00:00Z"), []));
 
         Assert.Empty(store.ReadAll());
@@ -67,7 +66,7 @@ public sealed class SqliteMarketObservationStoreTests
         using var database = TemporaryDatabase.Create();
         var store = new SqliteMarketObservationStore(database.Path);
         var input = new MarketObservationInput(
-            nameof(AuctionGetOffersResponse), MarketResponseKind.Offers, null,
+            "AuctionGetOffersResponse", MarketResponseKind.Offers, null,
             DateTimeOffset.Parse("2026-10-02T12:00:00Z"),
             [CreateOrder(10), CreateOrder(11)]);
 
@@ -81,9 +80,9 @@ public sealed class SqliteMarketObservationStoreTests
         => new(
             kind switch
             {
-                MarketResponseKind.Offers => nameof(AuctionGetOffersResponse),
-                MarketResponseKind.Requests => nameof(AuctionGetRequestsResponse),
-                _ => nameof(AuctionGetLoadoutOffersResponse)
+                MarketResponseKind.Offers => "AuctionGetOffersResponse",
+                MarketResponseKind.Requests => "AuctionGetRequestsResponse",
+                _ => "AuctionGetLoadoutOffersResponse"
             },
             kind, null, capturedAt, [CreateOrder(id)]);
 
