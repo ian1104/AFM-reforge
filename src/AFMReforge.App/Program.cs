@@ -4,7 +4,7 @@ using AFMReforge.Core;
 using AFMReforge.Infrastructure;
 using AlbionDataAvalonia.Network.Responses;
 
-Console.WriteLine("AFM Reforge Step 8 mock persistence/query pipeline");
+Console.WriteLine("AFM Reforge Step 9 mock observation pipeline");
 
 var databasePath = Path.Combine(AppContext.BaseDirectory, "afm-reforge-step7.db");
 var store = new SqliteMarketObservationStore(databasePath);
@@ -12,6 +12,10 @@ var adapter = new AfmMarketAdapter();
 var processing = new MarketProcessing(store: store);
 
 adapter.MarketResponseObserved += processing.Process;
+
+var observationFactory = new MarketObservationFactory();
+var observations = new List<MarketObservation>();
+adapter.MarketResponseObserved += input => observations.Add(observationFactory.Create(input));
 
 // Mock source: synthetic AFM response DTOs only. This is not Albion runtime data.
 var mockResponses = new object[]
@@ -52,6 +56,13 @@ var itemMatches = store.Query(new MarketRecordQuery(ItemTypeId: "MOCK_REQUESTS_I
 var locationMatches = store.Query(new MarketRecordQuery(LocationId: "1001"));
 
 Console.WriteLine($"Mock inputs processed: {processing.State.InputCount}");
+Console.WriteLine($"Observation candidates constructed: {observations.Count}");
+foreach (var observation in observations)
+{
+    Console.WriteLine(
+        $"Observation candidate {observation.ObservationId}: {observation.ResponseKind}, " +
+        $"orders={observation.Orders.Count}, capturedAt={observation.CapturedAt:O}");
+}
 Console.WriteLine($"SQLite records read back: {persisted.Count}");
 Console.WriteLine($"Recent query records: {recent.Count}");
 Console.WriteLine($"Item filter records: {itemMatches.Count}");
