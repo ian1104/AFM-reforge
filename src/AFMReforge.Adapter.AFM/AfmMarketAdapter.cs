@@ -22,6 +22,12 @@ public sealed class AfmMarketAdapter
         return builder.Build();
     }
 
+    public void ProcessMockResponse<TResponse>(TResponse response)
+        where TResponse : class
+    {
+        MarketResponseObserved?.Invoke(Map(response));
+    }
+
     public void RegisterTypedMarketSubscriptions(object receiverBuilder)
     {
         Subscribe<AuctionGetOffersResponse>(receiverBuilder);
