@@ -437,6 +437,7 @@ public sealed class SqliteMarketObservationStore : IMarketObservationStore, IMar
 
 public sealed record StoredMarketObservationRecord(
     long StorageRecordId,
+    Guid? ObservationId,
     string ResponseType,
     string ResponseKind,
     string? OperationCode,
