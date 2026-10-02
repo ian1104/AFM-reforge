@@ -32,13 +32,13 @@ foreach (var response in mockResponses)
     switch (response)
     {
         case AuctionGetOffersResponse offers:
-            adapter.MarketResponseObserved?.Invoke(adapter.Map(offers));
+            adapter.ProcessMockResponse(offers);
             break;
         case AuctionGetRequestsResponse requests:
-            adapter.MarketResponseObserved?.Invoke(adapter.Map(requests));
+            adapter.ProcessMockResponse(requests);
             break;
         case AuctionGetLoadoutOffersResponse loadout:
-            adapter.MarketResponseObserved?.Invoke(adapter.Map(loadout));
+            adapter.ProcessMockResponse(loadout);
             break;
     }
 }
