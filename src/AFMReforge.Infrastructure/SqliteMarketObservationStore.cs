@@ -68,13 +68,13 @@ public sealed class SqliteMarketObservationStore : IMarketObservationStore, IMar
     {
         ArgumentNullException.ThrowIfNull(input);
 
-        if (input.Orders.Count == 0)
+        if (input.Records.Count == 0)
             return;
 
         using var connection = OpenConnection();
         using var transaction = connection.BeginTransaction();
 
-        foreach (var order in input.Orders)
+        foreach (var order in input.Records)
         {
             InsertOrder(connection, transaction, null, input.ResponseType, input.ResponseKind,
                 input.OperationCode, input.CapturedAt, order);
@@ -91,7 +91,7 @@ public sealed class SqliteMarketObservationStore : IMarketObservationStore, IMar
         MarketResponseKind responseKind,
         object? operationCode,
         DateTimeOffset? capturedAt,
-        MarketOrderInput order)
+        MarketRecord order)
     {
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
@@ -143,7 +143,7 @@ public sealed class SqliteMarketObservationStore : IMarketObservationStore, IMar
         command.Parameters.AddWithValue("$operationCode", SerializeValue(operationCode));
         command.Parameters.AddWithValue("$capturedAt",
             capturedAt?.ToString("O", CultureInfo.InvariantCulture) ?? (object)DBNull.Value);
-        command.Parameters.AddWithValue("$orderId", SerializeValue(order.Id));
+        command.Parameters.AddWithValue("$orderId", SerializeValue(order.OrderId));
         command.Parameters.AddWithValue("$itemTypeId", SerializeValue(order.ItemTypeId));
         command.Parameters.AddWithValue("$itemGroupTypeId", SerializeValue(order.ItemGroupTypeId));
         command.Parameters.AddWithValue("$locationId", SerializeValue(order.LocationId));
@@ -151,10 +151,10 @@ public sealed class SqliteMarketObservationStore : IMarketObservationStore, IMar
         command.Parameters.AddWithValue("$enchantmentLevel", SerializeValue(order.EnchantmentLevel));
         command.Parameters.AddWithValue("$unitPriceSilver", SerializeValue(order.UnitPriceSilver));
         command.Parameters.AddWithValue("$amount", SerializeValue(order.Amount));
-        command.Parameters.AddWithValue("$auctionType", SerializeValue(order.AuctionType));
+        command.Parameters.AddWithValue("$auctionType", SerializeValue(order.AuctionType.ToString()));
         command.Parameters.AddWithValue("$expires", SerializeValue(order.Expires));
         command.Parameters.AddWithValue("$distanceFee", SerializeValue(order.DistanceFee));
-        command.Parameters.AddWithValue("$resolvedLocation", SerializeValue(order.ResolvedLocation));
+        command.Parameters.AddWithValue("$resolvedLocation", (object)DBNull.Value);
         command.ExecuteNonQuery();
     }
 
@@ -258,11 +258,11 @@ public sealed class SqliteMarketObservationStore : IMarketObservationStore, IMar
         {
             records.Add(new MarketRecordView(
                 reader.GetInt64(0),
-                ReadNullableGuid(reader, 1),
-                reader.GetString(2),
-                Enum.Parse<MarketResponseKind>(reader.GetString(3)),
-                ReadNullableString(reader, 4),
-                ReadNullableDateTimeOffset(reader, 5),
+                reader.GetString(1),
+                Enum.Parse<MarketResponseKind>(reader.GetString(2)),
+                ReadNullableString(reader, 3),
+                ReadNullableDateTimeOffset(reader, 4),
+                UnserializeString(reader, 5),
                 UnserializeString(reader, 6),
                 UnserializeString(reader, 7),
                 UnserializeString(reader, 8),
@@ -274,7 +274,7 @@ public sealed class SqliteMarketObservationStore : IMarketObservationStore, IMar
                 UnserializeString(reader, 14),
                 UnserializeString(reader, 15),
                 UnserializeString(reader, 16),
-                UnserializeString(reader, 17)));
+                ReadNullableGuid(reader, 17)));
         }
 
         return records;
