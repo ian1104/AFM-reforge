@@ -10,5 +10,6 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
     <ProjectReference Include="..\..\src\AFMReforge.Core\AFMReforge.Core.csproj" />
     <ProjectReference Include="..\..\src\AFMReforge.Infrastructure\AFMReforge.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\AFMReforge.Adapter.AFM\AFMReforge.Adapter.AFM.csproj" />
   </ItemGroup>
 </Project>
