@@ -17,15 +17,9 @@ public sealed class SyntheticEndToEndInvariantTests
         var observations = new List<MarketObservation>();
 
         adapter.MarketResponseObserved += input => observations.Add(processing.Process(input));
+        adapter.ProcessMockResponse(CreateOffersResponse((100, "MOCK_T6_SWORD"), (100, "MOCK_T6_SWORD"), (101, "MOCK_T6_AXE")));
 
-        adapter.ProcessMockResponse(CreateOffersResponse(
-            (100, "MOCK_T6_SWORD"),
-            (100, "MOCK_T6_SWORD"),
-            (101, "MOCK_T6_AXE")));
-
-        Assert.Single(observations);
-        var observation = observations.Single();
-
+        var observation = Assert.Single(observations);
         var records = store.Query(new MarketRecordQuery(
             ObservationId: observation.ObservationId,
             ItemTypeId: "MOCK_T6_SWORD",
@@ -34,7 +28,6 @@ public sealed class SyntheticEndToEndInvariantTests
 
         Assert.Equal(2, records.Count);
         Assert.All(records, record => Assert.Equal(observation.ObservationId, record.ObservationId));
-        Assert.All(records, record => Assert.Equal("MOCK_T6_SWORD", record.ItemTypeId));
         Assert.Equal(["100", "100"], records.Select(record => record.OrderId));
         Assert.Equal(2, records.Select(record => record.StorageRecordId).Distinct().Count());
     }
@@ -49,7 +42,6 @@ public sealed class SyntheticEndToEndInvariantTests
         var observations = new List<MarketObservation>();
 
         adapter.MarketResponseObserved += input => observations.Add(processing.Process(input));
-
         adapter.ProcessMockResponse(CreateOffersResponse((100, "MOCK_T6_SWORD")));
         adapter.ProcessMockResponse(CreateOffersResponse((100, "MOCK_T6_SWORD")));
 
@@ -74,12 +66,10 @@ public sealed class SyntheticEndToEndInvariantTests
         var observations = new List<MarketObservation>();
 
         adapter.MarketResponseObserved += input => observations.Add(processing.Process(input));
-
         adapter.ProcessMockResponse(CreateOffersResponse((1, "MOCK_OFFERS")));
         adapter.ProcessMockResponse(CreateRequestsResponse((2, "MOCK_REQUESTS")));
         adapter.ProcessMockResponse(CreateLoadoutOffersResponse((3, "MOCK_LOADOUT")));
 
-        Assert.Equal(3, observations.Count);
         Assert.Equal(
             [MarketResponseKind.Offers, MarketResponseKind.Requests, MarketResponseKind.LoadoutOffers],
             observations.Select(x => x.ResponseKind));
@@ -114,17 +104,14 @@ public sealed class SyntheticEndToEndInvariantTests
         var processing = new MarketProcessing(store: store);
         MarketObservation? observation = null;
         adapter.MarketResponseObserved += input => observation = processing.Process(input);
-
         adapter.ProcessMockResponse(CreateOffersResponse((901, "MOCK_NEW")));
 
-        Assert.NotNull(observation);
         var all = store.ReadAll();
         Assert.Equal(2, all.Count);
         Assert.Null(all[0].ObservationId);
 
         var associated = store.Query(new MarketRecordQuery(ObservationId: observation!.ObservationId));
-        Assert.Single(associated);
-        Assert.Equal("901", associated[0].OrderId);
+        Assert.Equal("901", Assert.Single(associated).OrderId);
     }
 
     [Fact]
@@ -141,14 +128,12 @@ public sealed class SyntheticEndToEndInvariantTests
             [CreateOrder(1, "MOCK_STABLE")]);
         store.Persist(stable);
 
-        var duplicateObservationId = stable.ObservationId;
-        var failing = new MarketObservation(
-            duplicateObservationId,
-            "AuctionGetRequestsResponse",
-            MarketResponseKind.Requests,
-            null,
-            DateTimeOffset.Parse("2026-10-02T10:01:00Z"),
-            [CreateOrder(2, "MOCK_SHOULD_ROLLBACK"), CreateOrder(3, "MOCK_SHOULD_ROLLBACK")]);
+        var failing = stable with
+        {
+            ObservationId = stable.ObservationId,
+            ResponseKind = MarketResponseKind.Requests,
+            Records = [CreateOrder(2, "MOCK_SHOULD_ROLLBACK"), CreateOrder(3, "MOCK_SHOULD_ROLLBACK")]
+        };
 
         Assert.Throws<SqliteException>(() => store.Persist(failing));
 
@@ -168,25 +153,16 @@ public sealed class SyntheticEndToEndInvariantTests
         var observations = new List<MarketObservation>();
 
         adapter.MarketResponseObserved += input => observations.Add(processing.Process(input));
-
         adapter.ProcessMockResponse(CreateOffersResponse((10, "MOCK_A"), (11, "MOCK_A")));
         adapter.ProcessMockResponse(CreateRequestsResponse((20, "MOCK_B"), (21, "MOCK_B")));
         adapter.ProcessMockResponse(CreateLoadoutOffersResponse((30, "MOCK_C"), (31, "MOCK_C")));
         adapter.ProcessMockResponse(CreateOffersResponse((40, "MOCK_D"), (41, "MOCK_D")));
 
-        Assert.Equal(4, observations.Count);
-
         var recent = store.Query(new MarketRecordQuery(Limit: 8));
 
-        Assert.Equal(
-            ["41", "40", "31", "30", "21", "20", "11", "10"],
-            recent.Select(record => record.OrderId));
-        Assert.All(
-            recent.Take(2),
-            record => Assert.Equal(observations[3].ObservationId, record.ObservationId));
-        Assert.All(
-            recent.Skip(2).Take(2),
-            record => Assert.Equal(observations[2].ObservationId, record.ObservationId));
+        Assert.Equal(["41", "40", "31", "30", "21", "20", "11", "10"], recent.Select(record => record.OrderId));
+        Assert.All(recent.Take(2), record => Assert.Equal(observations[3].ObservationId, record.ObservationId));
+        Assert.All(recent.Skip(2).Take(2), record => Assert.Equal(observations[2].ObservationId, record.ObservationId));
     }
 
     [Fact]
@@ -205,39 +181,63 @@ public sealed class SyntheticEndToEndInvariantTests
         var observation = processing.Process(input);
 
         Assert.NotEqual(Guid.Empty, observation.ObservationId);
-        Assert.Empty(observation.Orders);
+        Assert.Empty(observation.Records);
         Assert.Empty(store.ReadAll());
-        Assert.Empty(store.Query(new MarketRecordQuery(ObservationId: observation.ObservationId)));
     }
 
+    [Fact]
+    public void CanonicalRecordRoundTripPreservesAllMarketFields()
+    {
+        using var database = TemporaryDatabase.Create();
+        var store = new SqliteMarketObservationStore(database.Path);
+        var observation = new MarketObservation(
+            Guid.NewGuid(),
+            "AuctionGetOffersResponse",
+            MarketResponseKind.Offers,
+            null,
+            DateTimeOffset.Parse("2026-10-02T13:00:00Z"),
+            [new MarketRecord(
+                123UL, "MOCK_T6_SWORD", "MOCK_GROUP", "1001", 1, 2, 987654UL, 7,
+                MarketOrderType.Offer, "2030-01-01T00:00:00Z", 321UL)]);
+
+        store.Persist(observation);
+
+        var view = Assert.Single(store.Query(new MarketRecordQuery(ObservationId: observation.ObservationId)));
+        Assert.Equal("123", view.OrderId);
+        Assert.Equal("MOCK_T6_SWORD", view.ItemTypeId);
+        Assert.Equal("MOCK_GROUP", view.ItemGroupTypeId);
+        Assert.Equal("1001", view.LocationId);
+        Assert.Equal("1", view.QualityLevel);
+        Assert.Equal("2", view.EnchantmentLevel);
+        Assert.Equal("987654", view.UnitPriceSilver);
+        Assert.Equal("7", view.Amount);
+        Assert.Equal("Offer", view.AuctionType);
+        Assert.Equal("2030-01-01T00:00:00Z", view.Expires);
+        Assert.Equal("321", view.DistanceFee);
+        Assert.Equal(observation.ObservationId, view.ObservationId);
+        Assert.Equal(observation.CapturedAt, view.CapturedAt);
+    }
+
+    private static MarketRecord CreateOrder(ulong id, string itemTypeId)
+        => new(id, itemTypeId, "MOCK_GROUP", "1001", 1, 0, 1234UL, 2U, MarketOrderType.Unknown,
+            "2030-01-01T00:00:00Z", 0UL);
+
     private static AuctionGetOffersResponse CreateOffersResponse(params (int Id, string ItemTypeId)[] orders)
-        => new(new Dictionary<byte, object>
-        {
-            [0] = orders.Select(order => CreateOrderJson(order.Id, order.ItemTypeId)).ToArray()
-        });
+        => new(new Dictionary<byte, object> { [0] = orders.Select(CreateOrderJson).ToArray() });
 
     private static AuctionGetRequestsResponse CreateRequestsResponse(params (int Id, string ItemTypeId)[] orders)
-        => new(new Dictionary<byte, object>
-        {
-            [0] = orders.Select(order => CreateOrderJson(order.Id, order.ItemTypeId)).ToArray()
-        });
+        => new(new Dictionary<byte, object> { [0] = orders.Select(CreateOrderJson).ToArray() });
 
     private static AuctionGetLoadoutOffersResponse CreateLoadoutOffersResponse(params (int Id, string ItemTypeId)[] orders)
-        => new(new Dictionary<byte, object>
-        {
-            [1] = new[]
-            {
-                orders.Select(order => CreateOrderJson(order.Id, order.ItemTypeId)).ToArray()
-            }
-        });
+        => new(new Dictionary<byte, object> { [1] = new[] { orders.Select(CreateOrderJson).ToArray() } });
 
-    private static string CreateOrderJson(int id, string itemTypeId)
+    private static string CreateOrderJson((int Id, string ItemTypeId) order)
         => System.Text.Json.JsonSerializer.Serialize(new
         {
-            Id = id,
-            ItemTypeId = itemTypeId,
+            order.Id,
+            order.ItemTypeId,
             ItemGroupTypeId = "MOCK_GROUP",
-            LocationId = 1001,
+            LocationId = "1001",
             QualityLevel = 1,
             EnchantmentLevel = 0,
             UnitPriceSilver = 1234L,
@@ -248,30 +248,13 @@ public sealed class SyntheticEndToEndInvariantTests
             Location = "MOCK_CAERLEON"
         });
 
-    private static MarketOrderInput CreateOrder(int id, string itemTypeId)
-        => new(
-            id,
-            itemTypeId,
-            "MOCK_GROUP",
-            1001,
-            1,
-            0,
-            1234L,
-            2,
-            "MOCK_AUCTION",
-            "2030-01-01T00:00:00Z",
-            0,
-            "MOCK_CAERLEON");
-
     private sealed class TemporaryDatabase : IDisposable
     {
         private TemporaryDatabase(string path) => Path = path;
         public string Path { get; }
 
         public static TemporaryDatabase Create()
-            => new(System.IO.Path.Combine(
-                System.IO.Path.GetTempPath(),
-                $"afm-reforge-step12-{Guid.NewGuid():N}.db"));
+            => new(System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"afm-reforge-step13-{Guid.NewGuid():N}.db"));
 
         public void Dispose()
         {
