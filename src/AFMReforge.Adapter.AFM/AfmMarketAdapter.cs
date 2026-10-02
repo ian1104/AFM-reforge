@@ -1,5 +1,6 @@
 using System.Reflection;
 using AFMReforge.Core;
+using Albion.Network;
 using AlbionDataAvalonia.Network.Responses;
 
 namespace AFMReforge.Adapter.AFM;
@@ -10,6 +11,16 @@ namespace AFMReforge.Adapter.AFM;
 public sealed class AfmMarketAdapter
 {
     public event Action<MarketObservationInput>? MarketResponseObserved;
+
+    public object BuildConfiguredReceiver(object afmCore)
+    {
+        var builder = ReceiverBuilder.Create();
+        var register = afmCore.GetType().GetMethod("RegisterHandlers", BindingFlags.Instance | BindingFlags.Public)
+            ?? throw new InvalidOperationException("AFM Core does not expose RegisterHandlers(builder).");
+        register.Invoke(afmCore, [builder]);
+        RegisterTypedMarketSubscriptions(builder);
+        return builder.Build();
+    }
 
     public void RegisterTypedMarketSubscriptions(object receiverBuilder)
     {
