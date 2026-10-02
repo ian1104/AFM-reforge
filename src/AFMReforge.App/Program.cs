@@ -4,7 +4,7 @@ using AFMReforge.Core;
 using AFMReforge.Infrastructure;
 using AlbionDataAvalonia.Network.Responses;
 
-Console.WriteLine("AFM Reforge Step 7 mock persistence pipeline");
+Console.WriteLine("AFM Reforge Step 8 mock persistence/query pipeline");
 
 var databasePath = Path.Combine(AppContext.BaseDirectory, "afm-reforge-step7.db");
 var store = new SqliteMarketObservationStore(databasePath);
@@ -47,8 +47,15 @@ foreach (var response in mockResponses)
 }
 
 var persisted = store.ReadAll();
+var recent = store.Query(new MarketRecordQuery(Limit: 3));
+var itemMatches = store.Query(new MarketRecordQuery(ItemTypeId: "MOCK_REQUESTS_ITEM"));
+var locationMatches = store.Query(new MarketRecordQuery(LocationId: "1001"));
+
 Console.WriteLine($"Mock inputs processed: {processing.State.InputCount}");
 Console.WriteLine($"SQLite records read back: {persisted.Count}");
+Console.WriteLine($"Recent query records: {recent.Count}");
+Console.WriteLine($"Item filter records: {itemMatches.Count}");
+Console.WriteLine($"Location filter records: {locationMatches.Count}");
 Console.WriteLine($"Database: {databasePath}");
 Console.WriteLine("Runtime status: UNAVAILABLE");
 
