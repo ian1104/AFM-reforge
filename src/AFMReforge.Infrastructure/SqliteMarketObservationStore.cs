@@ -225,7 +225,6 @@ public sealed class SqliteMarketObservationStore : IMarketObservationStore, IMar
         command.CommandText = $"""
             SELECT
                 StorageRecordId,
-                ObservationId,
                 ResponseType,
                 ResponseKind,
                 OperationCode,
@@ -241,7 +240,8 @@ public sealed class SqliteMarketObservationStore : IMarketObservationStore, IMar
                 AuctionType,
                 Expires,
                 DistanceFee,
-                ResolvedLocation
+                ResolvedLocation,
+                ObservationId
             FROM market_observation_records
             {(predicates.Count == 0 ? "" : "WHERE " + string.Join(" AND ", predicates))}
             ORDER BY StorageRecordId DESC
