@@ -29,6 +29,56 @@ public sealed class AfmMarketAdapterTests
     }
 
     [Fact]
+    public void PreservesCanonicalNumericTypesAndAuctionType()
+    {
+        var mapper = new MarketOrderMapper();
+        var record = mapper.Map(new
+        {
+            Id = 42UL,
+            ItemTypeId = "MOCK_ITEM",
+            ItemGroupTypeId = "MOCK_GROUP",
+            LocationId = "1001",
+            QualityLevel = (byte)3,
+            EnchantmentLevel = (byte)2,
+            UnitPriceSilver = 987654UL,
+            Amount = 7U,
+            AuctionType = "offer",
+            Expires = "2030-01-01T00:00:00Z",
+            DistanceFee = 321UL
+        });
+
+        Assert.Equal(42UL, record.OrderId);
+        Assert.Equal((byte)3, record.QualityLevel);
+        Assert.Equal((byte)2, record.EnchantmentLevel);
+        Assert.Equal(987654UL, record.UnitPriceSilver);
+        Assert.Equal(7U, record.Amount);
+        Assert.Equal(MarketOrderType.Offer, record.AuctionType);
+        Assert.Equal(321UL, record.DistanceFee);
+    }
+
+    [Fact]
+    public void RequiredCanonicalFieldsRejectNullValues()
+    {
+        var mapper = new MarketOrderMapper();
+        var order = new
+        {
+            Id = 42UL,
+            ItemTypeId = (string?)null,
+            ItemGroupTypeId = "MOCK_GROUP",
+            LocationId = "1001",
+            QualityLevel = (byte)1,
+            EnchantmentLevel = (byte)0,
+            UnitPriceSilver = 1234UL,
+            Amount = 2U,
+            AuctionType = "request",
+            Expires = "2030-01-01T00:00:00Z",
+            DistanceFee = 0UL
+        };
+
+        Assert.Throws<InvalidOperationException>(() => mapper.Map(order));
+    }
+
+    [Fact]
     public void MapsRequestsResponseToSameReforgePipeline()
     {
         var input = new AfmMarketAdapter().Map(new AuctionGetRequestsResponse(new Dictionary<byte, object>
