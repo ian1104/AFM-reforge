@@ -10,14 +10,12 @@ public sealed class AfmMarketAdapterTests
     [Fact]
     public void MapsOffersResponseToReforgeOwnedInput()
     {
-        var capturedAt = DateTimeOffset.Parse("2026-10-02T12:00:00Z");
-        var response = CreateOffersResponse(42, capturedAt);
+        var response = CreateOffersResponse(42);
 
         var input = new AfmMarketAdapter().Map(response);
 
         Assert.Equal(nameof(AuctionGetOffersResponse), input.ResponseType);
         Assert.Equal(MarketResponseKind.Offers, input.ResponseKind);
-        Assert.Equal(capturedAt, input.CapturedAt);
         AssertMappedOrder(input, 42);
     }
 
@@ -71,8 +69,7 @@ public sealed class AfmMarketAdapterTests
     [Fact]
     public void AdapterToCorePipelinePreservesFields()
     {
-        var capturedAt = DateTimeOffset.Parse("2026-10-02T12:00:00Z");
-        var input = new AfmMarketAdapter().Map(CreateOffersResponse(45, capturedAt));
+        var input = new AfmMarketAdapter().Map(CreateOffersResponse(45));
         var processing = new MarketProcessing();
 
         processing.Process(input);
@@ -86,15 +83,13 @@ public sealed class AfmMarketAdapterTests
         Assert.Equal("MOCK_LOCATION", stored.Orders[0].ResolvedLocation);
     }
 
-    private static AuctionGetOffersResponse CreateOffersResponse(int id, DateTimeOffset capturedAt)
+    private static AuctionGetOffersResponse CreateOffersResponse(int id)
     {
         var response = new AuctionGetOffersResponse(new Dictionary<byte, object>
         {
             [0] = new[] { CreateOrderJson(id, "T4_MOCK") }
         });
 
-        // BaseOperation.CapturedAt is read-only in the AFM DTO; this test verifies
-        // the actual constructor path and does not invent a setter for runtime metadata.
         Assert.NotNull(response);
         return response;
     }
