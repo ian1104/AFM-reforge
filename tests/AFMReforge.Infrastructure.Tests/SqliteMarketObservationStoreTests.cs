@@ -1,5 +1,6 @@
 using AFMReforge.Core;
 using AFMReforge.Infrastructure;
+using AlbionDataAvalonia.Network.Responses;
 
 namespace AFMReforge.Infrastructure.Tests;
 
