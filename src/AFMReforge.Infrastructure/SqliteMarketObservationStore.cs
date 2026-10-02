@@ -26,12 +26,48 @@ public sealed class SqliteMarketObservationStore : IMarketObservationStore, IMar
         Initialize();
     }
 
+    public void Persist(MarketObservation observation)
+    {
+        ArgumentNullException.ThrowIfNull(observation);
+
+        using var connection = OpenConnection();
+        using var transaction = connection.BeginTransaction();
+
+        using (var observationCommand = connection.CreateCommand())
+        {
+            observationCommand.Transaction = transaction;
+            observationCommand.CommandText = """
+                INSERT INTO market_observations (
+                    ObservationId,
+                    CapturedAt,
+                    ResponseKind
+                )
+                VALUES (
+                    $observationId,
+                    $capturedAt,
+                    $responseKind
+                );
+                """;
+            observationCommand.Parameters.AddWithValue("$observationId", observation.ObservationId.ToString("D"));
+            observationCommand.Parameters.AddWithValue("$capturedAt",
+                observation.CapturedAt?.ToString("O", CultureInfo.InvariantCulture) ?? (object)DBNull.Value);
+            observationCommand.Parameters.AddWithValue("$responseKind", observation.ResponseKind.ToString());
+            observationCommand.ExecuteNonQuery();
+        }
+
+        foreach (var order in observation.Orders)
+        {
+            InsertOrder(connection, transaction, observation.ObservationId, observation.ResponseType,
+                observation.ResponseKind, observation.OperationCode, observation.CapturedAt, order);
+        }
+
+        transaction.Commit();
+    }
+
     public void Persist(MarketObservationInput input)
     {
         ArgumentNullException.ThrowIfNull(input);
 
-        // Empty input is intentionally a no-op: the current storage unit is an
-        // order row, not a final response/observation record.
         if (input.Orders.Count == 0)
             return;
 
@@ -40,68 +76,86 @@ public sealed class SqliteMarketObservationStore : IMarketObservationStore, IMar
 
         foreach (var order in input.Orders)
         {
-            using var command = connection.CreateCommand();
-            command.Transaction = transaction;
-            command.CommandText = """
-                INSERT INTO market_observation_records (
-                    ResponseType,
-                    ResponseKind,
-                    OperationCode,
-                    CapturedAt,
-                    OrderId,
-                    ItemTypeId,
-                    ItemGroupTypeId,
-                    LocationId,
-                    QualityLevel,
-                    EnchantmentLevel,
-                    UnitPriceSilver,
-                    Amount,
-                    AuctionType,
-                    Expires,
-                    DistanceFee,
-                    ResolvedLocation
-                )
-                VALUES (
-                    $responseType,
-                    $responseKind,
-                    $operationCode,
-                    $capturedAt,
-                    $orderId,
-                    $itemTypeId,
-                    $itemGroupTypeId,
-                    $locationId,
-                    $qualityLevel,
-                    $enchantmentLevel,
-                    $unitPriceSilver,
-                    $amount,
-                    $auctionType,
-                    $expires,
-                    $distanceFee,
-                    $resolvedLocation
-                );
-                """;
-
-            command.Parameters.AddWithValue("$responseType", input.ResponseType);
-            command.Parameters.AddWithValue("$responseKind", input.ResponseKind.ToString());
-            command.Parameters.AddWithValue("$operationCode", SerializeValue(input.OperationCode));
-            command.Parameters.AddWithValue("$capturedAt", input.CapturedAt?.ToString("O", CultureInfo.InvariantCulture) ?? (object)DBNull.Value);
-            command.Parameters.AddWithValue("$orderId", SerializeValue(order.Id));
-            command.Parameters.AddWithValue("$itemTypeId", SerializeValue(order.ItemTypeId));
-            command.Parameters.AddWithValue("$itemGroupTypeId", SerializeValue(order.ItemGroupTypeId));
-            command.Parameters.AddWithValue("$locationId", SerializeValue(order.LocationId));
-            command.Parameters.AddWithValue("$qualityLevel", SerializeValue(order.QualityLevel));
-            command.Parameters.AddWithValue("$enchantmentLevel", SerializeValue(order.EnchantmentLevel));
-            command.Parameters.AddWithValue("$unitPriceSilver", SerializeValue(order.UnitPriceSilver));
-            command.Parameters.AddWithValue("$amount", SerializeValue(order.Amount));
-            command.Parameters.AddWithValue("$auctionType", SerializeValue(order.AuctionType));
-            command.Parameters.AddWithValue("$expires", SerializeValue(order.Expires));
-            command.Parameters.AddWithValue("$distanceFee", SerializeValue(order.DistanceFee));
-            command.Parameters.AddWithValue("$resolvedLocation", SerializeValue(order.ResolvedLocation));
-
-            command.ExecuteNonQuery();
+            InsertOrder(connection, transaction, null, input.ResponseType, input.ResponseKind,
+                input.OperationCode, input.CapturedAt, order);
         }
 
         transaction.Commit();
+    }
+
+    private static void InsertOrder(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        Guid? observationId,
+        string responseType,
+        MarketResponseKind responseKind,
+        object? operationCode,
+        DateTimeOffset? capturedAt,
+        MarketOrderInput order)
+    {
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            INSERT INTO market_observation_records (
+                ObservationId,
+                ResponseType,
+                ResponseKind,
+                OperationCode,
+                CapturedAt,
+                OrderId,
+                ItemTypeId,
+                ItemGroupTypeId,
+                LocationId,
+                QualityLevel,
+                EnchantmentLevel,
+                UnitPriceSilver,
+                Amount,
+                AuctionType,
+                Expires,
+                DistanceFee,
+                ResolvedLocation
+            )
+            VALUES (
+                $observationId,
+                $responseType,
+                $responseKind,
+                $operationCode,
+                $capturedAt,
+                $orderId,
+                $itemTypeId,
+                $itemGroupTypeId,
+                $locationId,
+                $qualityLevel,
+                $enchantmentLevel,
+                $unitPriceSilver,
+                $amount,
+                $auctionType,
+                $expires,
+                $distanceFee,
+                $resolvedLocation
+            );
+            """;
+
+        command.Parameters.AddWithValue("$observationId",
+            observationId?.ToString("D") ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("$responseType", responseType);
+        command.Parameters.AddWithValue("$responseKind", responseKind.ToString());
+        command.Parameters.AddWithValue("$operationCode", SerializeValue(operationCode));
+        command.Parameters.AddWithValue("$capturedAt",
+            capturedAt?.ToString("O", CultureInfo.InvariantCulture) ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("$orderId", SerializeValue(order.Id));
+        command.Parameters.AddWithValue("$itemTypeId", SerializeValue(order.ItemTypeId));
+        command.Parameters.AddWithValue("$itemGroupTypeId", SerializeValue(order.ItemGroupTypeId));
+        command.Parameters.AddWithValue("$locationId", SerializeValue(order.LocationId));
+        command.Parameters.AddWithValue("$qualityLevel", SerializeValue(order.QualityLevel));
+        command.Parameters.AddWithValue("$enchantmentLevel", SerializeValue(order.EnchantmentLevel));
+        command.Parameters.AddWithValue("$unitPriceSilver", SerializeValue(order.UnitPriceSilver));
+        command.Parameters.AddWithValue("$amount", SerializeValue(order.Amount));
+        command.Parameters.AddWithValue("$auctionType", SerializeValue(order.AuctionType));
+        command.Parameters.AddWithValue("$expires", SerializeValue(order.Expires));
+        command.Parameters.AddWithValue("$distanceFee", SerializeValue(order.DistanceFee));
+        command.Parameters.AddWithValue("$resolvedLocation", SerializeValue(order.ResolvedLocation));
+        command.ExecuteNonQuery();
     }
 
     public IReadOnlyList<MarketRecordView> Query(MarketRecordQuery query)
@@ -119,6 +173,12 @@ public sealed class SqliteMarketObservationStore : IMarketObservationStore, IMar
         using var command = connection.CreateCommand();
 
         var predicates = new List<string>();
+
+        if (query.ObservationId.HasValue)
+        {
+            predicates.Add("ObservationId = $observationId");
+            command.Parameters.AddWithValue("$observationId", query.ObservationId.Value.ToString("D"));
+        }
 
         if (query.ItemTypeId is not null)
         {
@@ -165,6 +225,7 @@ public sealed class SqliteMarketObservationStore : IMarketObservationStore, IMar
         command.CommandText = $"""
             SELECT
                 StorageRecordId,
+                ObservationId,
                 ResponseType,
                 ResponseKind,
                 OperationCode,
@@ -197,11 +258,11 @@ public sealed class SqliteMarketObservationStore : IMarketObservationStore, IMar
         {
             records.Add(new MarketRecordView(
                 reader.GetInt64(0),
-                reader.GetString(1),
-                Enum.Parse<MarketResponseKind>(reader.GetString(2)),
-                ReadNullableString(reader, 3),
-                ReadNullableDateTimeOffset(reader, 4),
-                UnserializeString(reader, 5),
+                ReadNullableGuid(reader, 1),
+                reader.GetString(2),
+                Enum.Parse<MarketResponseKind>(reader.GetString(3)),
+                ReadNullableString(reader, 4),
+                ReadNullableDateTimeOffset(reader, 5),
                 UnserializeString(reader, 6),
                 UnserializeString(reader, 7),
                 UnserializeString(reader, 8),
@@ -212,7 +273,8 @@ public sealed class SqliteMarketObservationStore : IMarketObservationStore, IMar
                 UnserializeString(reader, 13),
                 UnserializeString(reader, 14),
                 UnserializeString(reader, 15),
-                UnserializeString(reader, 16)));
+                UnserializeString(reader, 16),
+                UnserializeString(reader, 17)));
         }
 
         return records;
@@ -225,6 +287,7 @@ public sealed class SqliteMarketObservationStore : IMarketObservationStore, IMar
         command.CommandText = """
             SELECT
                 StorageRecordId,
+                ObservationId,
                 ResponseType,
                 ResponseKind,
                 OperationCode,
@@ -252,9 +315,9 @@ public sealed class SqliteMarketObservationStore : IMarketObservationStore, IMar
         {
             records.Add(new StoredMarketObservationRecord(
                 reader.GetInt64(0),
-                reader.GetString(1),
+                ReadNullableGuid(reader, 1),
                 reader.GetString(2),
-                ReadNullableString(reader, 3),
+                reader.GetString(3),
                 ReadNullableString(reader, 4),
                 ReadNullableString(reader, 5),
                 ReadNullableString(reader, 6),
@@ -267,7 +330,8 @@ public sealed class SqliteMarketObservationStore : IMarketObservationStore, IMar
                 ReadNullableString(reader, 13),
                 ReadNullableString(reader, 14),
                 ReadNullableString(reader, 15),
-                ReadNullableString(reader, 16)));
+                ReadNullableString(reader, 16),
+                ReadNullableString(reader, 17)));
         }
 
         return records;
@@ -285,8 +349,15 @@ public sealed class SqliteMarketObservationStore : IMarketObservationStore, IMar
         using var connection = OpenConnection();
         using var command = connection.CreateCommand();
         command.CommandText = """
+            CREATE TABLE IF NOT EXISTS market_observations (
+                ObservationId TEXT PRIMARY KEY,
+                CapturedAt TEXT NULL,
+                ResponseKind TEXT NOT NULL
+            );
+
             CREATE TABLE IF NOT EXISTS market_observation_records (
                 StorageRecordId INTEGER PRIMARY KEY AUTOINCREMENT,
+                ObservationId TEXT NULL,
                 ResponseType TEXT NOT NULL,
                 ResponseKind TEXT NOT NULL,
                 OperationCode TEXT NULL,
@@ -306,10 +377,41 @@ public sealed class SqliteMarketObservationStore : IMarketObservationStore, IMar
             );
             """;
         command.ExecuteNonQuery();
+
+        EnsureColumnExists(connection, "market_observation_records", "ObservationId", "TEXT NULL");
+    }
+
+    private static void EnsureColumnExists(
+        SqliteConnection connection,
+        string tableName,
+        string columnName,
+        string columnDefinition)
+    {
+        using var check = connection.CreateCommand();
+        check.CommandText = $"PRAGMA table_info({tableName});";
+        using var reader = check.ExecuteReader();
+
+        while (reader.Read())
+        {
+            if (string.Equals(reader.GetString(1), columnName, StringComparison.OrdinalIgnoreCase))
+                return;
+        }
+
+        reader.Close();
+
+        using var alter = connection.CreateCommand();
+        alter.CommandText = $"ALTER TABLE {tableName} ADD COLUMN {columnName} {columnDefinition};";
+        alter.ExecuteNonQuery();
     }
 
     private static string? ReadNullableString(SqliteDataReader reader, int ordinal)
         => reader.IsDBNull(ordinal) ? null : reader.GetString(ordinal);
+
+    private static Guid? ReadNullableGuid(SqliteDataReader reader, int ordinal)
+    {
+        var value = ReadNullableString(reader, ordinal);
+        return value is null ? null : Guid.Parse(value);
+    }
 
     private static DateTimeOffset? ReadNullableDateTimeOffset(SqliteDataReader reader, int ordinal)
     {
