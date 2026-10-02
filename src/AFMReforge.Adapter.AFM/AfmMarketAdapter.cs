@@ -5,11 +5,13 @@ using AlbionDataAvalonia.Network.Responses;
 
 namespace AFMReforge.Adapter.AFM;
 
-/// <summary>
-/// AFM-specific boundary. AFM response DTOs stop here and are mapped to Reforge-owned data.
-/// </summary>
 public sealed class AfmMarketAdapter
 {
+    private readonly MarketOrderMapper _marketOrderMapper;
+
+    public AfmMarketAdapter(MarketOrderMapper? marketOrderMapper = null)
+        => _marketOrderMapper = marketOrderMapper ?? new MarketOrderMapper();
+
     public event Action<MarketObservationInput>? MarketResponseObserved;
 
     public object BuildConfiguredReceiver(object afmCore)
@@ -22,11 +24,8 @@ public sealed class AfmMarketAdapter
         return builder.Build();
     }
 
-    public void ProcessMockResponse<TResponse>(TResponse response)
-        where TResponse : class
-    {
-        MarketResponseObserved?.Invoke(Map(response));
-    }
+    public void ProcessMockResponse<TResponse>(TResponse response) where TResponse : class
+        => MarketResponseObserved?.Invoke(Map(response));
 
     public void RegisterTypedMarketSubscriptions(object receiverBuilder)
     {
@@ -35,8 +34,7 @@ public sealed class AfmMarketAdapter
         Subscribe<AuctionGetLoadoutOffersResponse>(receiverBuilder);
     }
 
-    public MarketObservationInput Map<TResponse>(TResponse response)
-        where TResponse : class
+    public MarketObservationInput Map<TResponse>(TResponse response) where TResponse : class
     {
         var kind = response switch
         {
@@ -46,25 +44,22 @@ public sealed class AfmMarketAdapter
             _ => throw new ArgumentException($"Unsupported market response type: {response.GetType().FullName}", nameof(response))
         };
 
-        var type = response.GetType();
         var ordersValue = GetMember(response, "marketOrders");
-        var orders = ordersValue is System.Collections.IEnumerable enumerable
-            ? enumerable.Cast<object>().Select(MapOrder).ToArray()
+        var records = ordersValue is System.Collections.IEnumerable enumerable
+            ? enumerable.Cast<object>().Select(_marketOrderMapper.Map).ToArray()
             : [];
 
         return new MarketObservationInput(
-            type.Name,
+            response.GetType().Name,
             kind,
             GetMember(response, "OperationCode"),
             ToDateTimeOffset(GetMember(response, "CapturedAt")),
-            orders);
+            records);
     }
 
-    private void Subscribe<TResponse>(object receiverBuilder)
-        where TResponse : class
+    private void Subscribe<TResponse>(object receiverBuilder) where TResponse : class
     {
-        var methods = receiverBuilder.GetType()
-            .GetMethods(BindingFlags.Instance | BindingFlags.Public)
+        var methods = receiverBuilder.GetType().GetMethods(BindingFlags.Instance | BindingFlags.Public)
             .Where(m => m.Name == "SubscribeResponse" && m.IsGenericMethodDefinition)
             .Where(m => m.GetGenericArguments().Length == 1)
             .ToArray();
@@ -74,8 +69,7 @@ public sealed class AfmMarketAdapter
 
         var method = methods.FirstOrDefault(m => m.GetParameters().Length == 1)
             ?? throw new InvalidOperationException("AFM ReceiverBuilder SubscribeResponse<T> signature is unsupported.");
-        var parameterType = method.GetParameters()[0].ParameterType;
-        var callback = CreateCallbackDelegate(typeof(TResponse), parameterType);
+        var callback = CreateCallbackDelegate(typeof(TResponse), method.GetParameters()[0].ParameterType);
         method.MakeGenericMethod(typeof(TResponse)).Invoke(receiverBuilder, [callback]);
     }
 
@@ -100,23 +94,6 @@ public sealed class AfmMarketAdapter
     {
         MarketResponseObserved?.Invoke(Map(response));
         return Task.CompletedTask;
-    }
-
-    private static MarketOrderInput MapOrder(object order)
-    {
-        return new MarketOrderInput(
-            GetMember(order, "Id"),
-            GetMember(order, "ItemTypeId"),
-            GetMember(order, "ItemGroupTypeId"),
-            GetMember(order, "LocationId"),
-            GetMember(order, "QualityLevel"),
-            GetMember(order, "EnchantmentLevel"),
-            GetMember(order, "UnitPriceSilver"),
-            GetMember(order, "Amount"),
-            GetMember(order, "AuctionType"),
-            GetMember(order, "Expires"),
-            GetMember(order, "DistanceFee"),
-            GetMember(order, "Location"));
     }
 
     private static object? GetMember(object value, string name)
