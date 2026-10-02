@@ -1,16 +1,19 @@
 using System.Text.Json;
 using AFMReforge.Adapter.AFM;
 using AFMReforge.Core;
+using AFMReforge.Infrastructure;
 using AlbionDataAvalonia.Network.Responses;
 
-Console.WriteLine("AFM Reforge Step 6 mock market pipeline");
+Console.WriteLine("AFM Reforge Step 7 mock persistence pipeline");
 
+var databasePath = Path.Combine(AppContext.BaseDirectory, "afm-reforge-step7.db");
+var store = new SqliteMarketObservationStore(databasePath);
 var adapter = new AfmMarketAdapter();
-var processing = new MarketProcessing();
+var processing = new MarketProcessing(store: store);
 
 adapter.MarketResponseObserved += processing.Process;
 
-// Mock source: this constructs AFM response DTOs directly. It is not Albion runtime data.
+// Mock source: synthetic AFM response DTOs only. This is not Albion runtime data.
 var mockResponses = new object[]
 {
     new AuctionGetOffersResponse(new Dictionary<byte, object>
@@ -43,7 +46,10 @@ foreach (var response in mockResponses)
     }
 }
 
+var persisted = store.ReadAll();
 Console.WriteLine($"Mock inputs processed: {processing.State.InputCount}");
+Console.WriteLine($"SQLite records read back: {persisted.Count}");
+Console.WriteLine($"Database: {databasePath}");
 Console.WriteLine("Runtime status: UNAVAILABLE");
 
 static string CreateMockOrderJson(int id, string itemTypeId)
