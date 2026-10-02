@@ -16,7 +16,7 @@ public sealed class MarketProcessingTests
         var stored = Assert.Single(processing.State.Inputs);
         Assert.Equal(input, stored);
         Assert.Equal(capturedAt, stored.CapturedAt);
-        Assert.Equal(42, stored.Orders[0].Id);
+        Assert.Equal(42UL, stored.Records[0].OrderId);
     }
 
     [Fact]
@@ -49,7 +49,7 @@ public sealed class MarketProcessingTests
         var processing = new MarketProcessing();
         processing.Process(input);
 
-        Assert.Empty(processing.State.Inputs[0].Orders);
+        Assert.Empty(processing.State.Inputs[0].Records);
     }
 
     private static MarketObservationInput CreateInput(
@@ -66,5 +66,7 @@ public sealed class MarketProcessingTests
             kind,
             null,
             capturedAt,
-            [new MarketOrderInput(id, "MOCK_ITEM", "MOCK_GROUP", 1001, 1, 0, 1234L, 2, "MOCK", null, 0, "MOCK_LOCATION")]);
+            [new MarketRecord(
+                (ulong)id, "MOCK_ITEM", "MOCK_GROUP", "1001", 1, 0, 1234UL, 2U,
+                MarketOrderType.Unknown, "2030-01-01T00:00:00Z", 0UL)]);
 }
