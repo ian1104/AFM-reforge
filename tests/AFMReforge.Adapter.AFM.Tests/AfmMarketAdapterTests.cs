@@ -8,66 +8,63 @@ namespace AFMReforge.Adapter.AFM.Tests;
 public sealed class AfmMarketAdapterTests
 {
     [Fact]
-    public void MapsOffersResponseToReforgeOwnedInput()
+    public void MapsOffersResponseToCanonicalRecord()
     {
-        var response = CreateOffersResponse(42);
-
-        var input = new AfmMarketAdapter().Map(response);
+        var input = new AfmMarketAdapter().Map(CreateOffersResponse(42));
 
         Assert.Equal(nameof(AuctionGetOffersResponse), input.ResponseType);
         Assert.Equal(MarketResponseKind.Offers, input.ResponseKind);
-        AssertMappedOrder(input, 42);
+        var record = Assert.Single(input.Records);
+        Assert.Equal(42UL, record.OrderId);
+        Assert.Equal("T4_MOCK", record.ItemTypeId);
+        Assert.Equal("MOCK_GROUP", record.ItemGroupTypeId);
+        Assert.Equal("1001", record.LocationId);
+        Assert.Equal((byte)1, record.QualityLevel);
+        Assert.Equal((byte)0, record.EnchantmentLevel);
+        Assert.Equal(1234UL, record.UnitPriceSilver);
+        Assert.Equal(2U, record.Amount);
+        Assert.Equal(MarketOrderType.Unknown, record.AuctionType);
+        Assert.Equal("2030-01-01T00:00:00Z", record.Expires);
+        Assert.Equal(0UL, record.DistanceFee);
     }
 
     [Fact]
     public void MapsRequestsResponseToSameReforgePipeline()
     {
-        var response = new AuctionGetRequestsResponse(new Dictionary<byte, object>
+        var input = new AfmMarketAdapter().Map(new AuctionGetRequestsResponse(new Dictionary<byte, object>
         {
             [0] = new[] { CreateOrderJson(43, "T4_MOCK_REQUEST") }
-        });
-
-        var input = new AfmMarketAdapter().Map(response);
+        }));
 
         Assert.Equal(MarketResponseKind.Requests, input.ResponseKind);
-        AssertMappedOrder(input, 43);
+        Assert.Equal(43UL, Assert.Single(input.Records).OrderId);
     }
 
     [Fact]
     public void MapsLoadoutResponseToSameReforgePipeline()
     {
-        var response = new AuctionGetLoadoutOffersResponse(new Dictionary<byte, object>
+        var input = new AfmMarketAdapter().Map(new AuctionGetLoadoutOffersResponse(new Dictionary<byte, object>
         {
-            [1] = new[]
-            {
-                new[]
-                {
-                    CreateOrderJson(44, "T4_MOCK_LOADOUT")
-                }
-            }
-        });
-
-        var input = new AfmMarketAdapter().Map(response);
+            [1] = new[] { new[] { CreateOrderJson(44, "T4_MOCK_LOADOUT") } }
+        }));
 
         Assert.Equal(MarketResponseKind.LoadoutOffers, input.ResponseKind);
-        AssertMappedOrder(input, 44);
+        Assert.Equal(44UL, Assert.Single(input.Records).OrderId);
     }
 
     [Fact]
     public void PreservesEmptyOffersCollection()
     {
-        var response = new AuctionGetOffersResponse(new Dictionary<byte, object>
+        var input = new AfmMarketAdapter().Map(new AuctionGetOffersResponse(new Dictionary<byte, object>
         {
             [0] = Array.Empty<string>()
-        });
+        }));
 
-        var input = new AfmMarketAdapter().Map(response);
-
-        Assert.Empty(input.Orders);
+        Assert.Empty(input.Records);
     }
 
     [Fact]
-    public void AdapterToCorePipelinePreservesFields()
+    public void AdapterToCorePipelineExposesCanonicalRecordsOnly()
     {
         var input = new AfmMarketAdapter().Map(CreateOffersResponse(45));
         var processing = new MarketProcessing();
@@ -75,34 +72,21 @@ public sealed class AfmMarketAdapterTests
         processing.Process(input);
 
         var stored = Assert.Single(processing.State.Inputs);
+        var record = Assert.Single(stored.Records);
+
         Assert.Equal(input.ResponseKind, stored.ResponseKind);
         Assert.Equal(input.CapturedAt, stored.CapturedAt);
-        Assert.Equal(input.Orders, stored.Orders);
-        Assert.Equal("T4_MOCK", stored.Orders[0].ItemTypeId);
-        Assert.Equal(1234L, stored.Orders[0].UnitPriceSilver);
-        Assert.Equal("MOCK_LOCATION", stored.Orders[0].ResolvedLocation);
+        Assert.Equal(input.Records, stored.Records);
+        Assert.Equal("T4_MOCK", record.ItemTypeId);
+        Assert.Equal(1234UL, record.UnitPriceSilver);
+        Assert.Equal("1001", record.LocationId);
     }
 
     private static AuctionGetOffersResponse CreateOffersResponse(int id)
-    {
-        var response = new AuctionGetOffersResponse(new Dictionary<byte, object>
+        => new(new Dictionary<byte, object>
         {
             [0] = new[] { CreateOrderJson(id, "T4_MOCK") }
         });
-
-        Assert.NotNull(response);
-        return response;
-    }
-
-    private static void AssertMappedOrder(MarketObservationInput input, int expectedId)
-    {
-        var order = Assert.Single(input.Orders);
-        Assert.Equal(expectedId, order.Id);
-        Assert.NotNull(order.ItemTypeId);
-        Assert.NotNull(order.UnitPriceSilver);
-        Assert.NotNull(order.Amount);
-        Assert.NotNull(order.ResolvedLocation);
-    }
 
     private static string CreateOrderJson(int id, string itemTypeId)
         => JsonSerializer.Serialize(new
@@ -110,7 +94,7 @@ public sealed class AfmMarketAdapterTests
             Id = id,
             ItemTypeId = itemTypeId,
             ItemGroupTypeId = "MOCK_GROUP",
-            LocationId = 1001,
+            LocationId = "1001",
             QualityLevel = 1,
             EnchantmentLevel = 0,
             UnitPriceSilver = 1234L,
