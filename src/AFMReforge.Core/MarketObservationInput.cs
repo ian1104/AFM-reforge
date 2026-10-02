@@ -1,11 +1,19 @@
 namespace AFMReforge.Core;
 
+public enum MarketResponseKind
+{
+    Offers,
+    Requests,
+    LoadoutOffers
+}
+
 /// <summary>
-/// Reforge-owned representation of one AFM market response.
-/// This is deliberately not the final MarketObservation domain model.
+/// Reforge-owned transport/input shape for one AFM market response.
+/// This is not the final MarketObservation domain model.
 /// </summary>
 public sealed record MarketObservationInput(
     string ResponseType,
+    MarketResponseKind ResponseKind,
     object? OperationCode,
     DateTimeOffset? CapturedAt,
     IReadOnlyList<MarketOrderInput> Orders);
