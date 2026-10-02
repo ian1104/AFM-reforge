@@ -9,12 +9,27 @@ var records = new[]
     Create(104, "T6_SWORD", "CAERLEON", 4, 2, MarketOrderType.Request, 90, 5)
 };
 
+var scope = new MarketObservationScopeCalculator().Calculate(records);
 var groups = MarketRecordGrouping.GroupByKey(records);
 var metricsCalculator = new ObservedOrderMetricsCalculator();
 
-Console.WriteLine("Market Record Grouping");
-Console.WriteLine("----------------------");
-Console.WriteLine($"Input records: {records.Length}");
+Console.WriteLine("Observation Scope");
+Console.WriteLine("-----------------");
+Console.WriteLine($"Record Count: {records.Length}");
+Console.WriteLine($"ItemTypes: {string.Join(", ", scope.ItemTypeIds)}");
+Console.WriteLine($"Locations: {string.Join(", ", scope.LocationIds)}");
+Console.WriteLine($"Qualities: {string.Join(", ", scope.QualityLevels)}");
+Console.WriteLine($"Enchantments: {string.Join(", ", scope.EnchantmentLevels)}");
+Console.WriteLine($"AuctionTypes: {string.Join(", ", scope.AuctionTypes)}");
+Console.WriteLine($"HasMultipleItemTypes: {scope.HasMultipleItemTypes}");
+Console.WriteLine($"HasMultipleLocations: {scope.HasMultipleLocations}");
+Console.WriteLine($"HasMultipleQualities: {scope.HasMultipleQualities}");
+Console.WriteLine($"HasMultipleEnchantments: {scope.HasMultipleEnchantments}");
+Console.WriteLine($"HasMultipleAuctionTypes: {scope.HasMultipleAuctionTypes}");
+
+Console.WriteLine();
+Console.WriteLine("Grouping");
+Console.WriteLine("--------");
 Console.WriteLine($"Group count: {groups.Count}");
 
 var index = 1;
