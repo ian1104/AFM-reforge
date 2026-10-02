@@ -4,18 +4,15 @@ using AFMReforge.Core;
 using AFMReforge.Infrastructure;
 using AlbionDataAvalonia.Network.Responses;
 
-Console.WriteLine("AFM Reforge Step 9 mock observation pipeline");
+Console.WriteLine("AFM Reforge Step 10 mock observation persistence pipeline");
 
 var databasePath = Path.Combine(AppContext.BaseDirectory, "afm-reforge-step7.db");
 var store = new SqliteMarketObservationStore(databasePath);
 var adapter = new AfmMarketAdapter();
 var processing = new MarketProcessing(store: store);
 
-adapter.MarketResponseObserved += processing.Process;
-
-var observationFactory = new MarketObservationFactory();
 var observations = new List<MarketObservation>();
-adapter.MarketResponseObserved += input => observations.Add(observationFactory.Create(input));
+adapter.MarketResponseObserved += input => observations.Add(processing.Process(input));
 
 // Mock source: synthetic AFM response DTOs only. This is not Albion runtime data.
 var mockResponses = new object[]
@@ -54,6 +51,9 @@ var persisted = store.ReadAll();
 var recent = store.Query(new MarketRecordQuery(Limit: 3));
 var itemMatches = store.Query(new MarketRecordQuery(ItemTypeId: "MOCK_REQUESTS_ITEM"));
 var locationMatches = store.Query(new MarketRecordQuery(LocationId: "1001"));
+var firstObservationRecords = observations.Count == 0
+    ? []
+    : store.Query(new MarketRecordQuery(ObservationId: observations[0].ObservationId, Limit: 100));
 
 Console.WriteLine($"Mock inputs processed: {processing.State.InputCount}");
 Console.WriteLine($"Observation candidates constructed: {observations.Count}");
@@ -67,6 +67,7 @@ Console.WriteLine($"SQLite records read back: {persisted.Count}");
 Console.WriteLine($"Recent query records: {recent.Count}");
 Console.WriteLine($"Item filter records: {itemMatches.Count}");
 Console.WriteLine($"Location filter records: {locationMatches.Count}");
+Console.WriteLine($"First observation linked records: {firstObservationRecords.Count}");
 Console.WriteLine($"Database: {databasePath}");
 Console.WriteLine("Runtime status: UNAVAILABLE");
 
