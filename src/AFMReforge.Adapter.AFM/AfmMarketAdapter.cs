@@ -32,6 +32,14 @@ public sealed class AfmMarketAdapter
     public MarketObservationInput Map<TResponse>(TResponse response)
         where TResponse : class
     {
+        var kind = response switch
+        {
+            AuctionGetOffersResponse => MarketResponseKind.Offers,
+            AuctionGetRequestsResponse => MarketResponseKind.Requests,
+            AuctionGetLoadoutOffersResponse => MarketResponseKind.LoadoutOffers,
+            _ => throw new ArgumentException($"Unsupported market response type: {response.GetType().FullName}", nameof(response))
+        };
+
         var type = response.GetType();
         var ordersValue = GetMember(response, "marketOrders");
         var orders = ordersValue is System.Collections.IEnumerable enumerable
@@ -40,6 +48,7 @@ public sealed class AfmMarketAdapter
 
         return new MarketObservationInput(
             type.Name,
+            kind,
             GetMember(response, "OperationCode"),
             ToDateTimeOffset(GetMember(response, "CapturedAt")),
             orders);
