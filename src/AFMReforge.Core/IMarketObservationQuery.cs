@@ -6,10 +6,10 @@ public interface IMarketObservationQuery
 }
 
 public sealed record MarketRecordQuery(
-    string? ItemTypeId = null,
-    string? LocationId = null,
-    string? QualityLevel = null,
-    string? EnchantmentLevel = null,
+    object? ItemTypeId = null,
+    object? LocationId = null,
+    object? QualityLevel = null,
+    object? EnchantmentLevel = null,
     MarketResponseKind? ResponseKind = null,
     DateTimeOffset? From = null,
     DateTimeOffset? To = null,
