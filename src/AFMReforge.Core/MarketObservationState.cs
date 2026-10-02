@@ -1,9 +1,5 @@
 namespace AFMReforge.Core;
 
-/// <summary>
-/// Minimal in-memory processing state for Step 6.
-/// It is intentionally not a persistence model or final Observation model.
-/// </summary>
 public sealed class MarketObservationState
 {
     private readonly List<MarketObservationInput> _inputs = [];
