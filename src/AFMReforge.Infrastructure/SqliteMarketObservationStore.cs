@@ -55,7 +55,7 @@ public sealed class SqliteMarketObservationStore : IMarketObservationStore, IMar
             observationCommand.ExecuteNonQuery();
         }
 
-        foreach (var order in observation.Orders)
+        foreach (var order in observation.Records)
         {
             InsertOrder(connection, transaction, observation.ObservationId, observation.ResponseType,
                 observation.ResponseKind, observation.OperationCode, observation.CapturedAt, order);
