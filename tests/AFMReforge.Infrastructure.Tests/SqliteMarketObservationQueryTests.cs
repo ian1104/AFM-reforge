@@ -35,7 +35,7 @@ public sealed class SqliteMarketObservationQueryTests
         using var database = TemporaryDatabase.Create();
         var store = Seed(database.Path);
 
-        var results = store.Query(new MarketRecordQuery(LocationId: "2002"));
+        var results = store.Query(new MarketRecordQuery(LocationId: 2002));
 
         Assert.Single(results);
         Assert.Equal("ITEM_B", results[0].ItemTypeId);
@@ -50,8 +50,8 @@ public sealed class SqliteMarketObservationQueryTests
         var results = store.Query(new MarketRecordQuery(
             ItemTypeId: "ITEM_B",
             LocationId: "2002",
-            QualityLevel: "5",
-            EnchantmentLevel: "4",
+            QualityLevel: 5,
+            EnchantmentLevel: 4,
             ResponseKind: MarketResponseKind.Offers));
 
         Assert.Single(results);
@@ -144,11 +144,11 @@ public sealed class SqliteMarketObservationQueryTests
     private static MarketObservationInput CreateInput(
         int id,
         string item,
-        string location,
+        object location,
         MarketResponseKind kind,
         string capturedAt,
-        string quality = "1",
-        string enchantment = "0")
+        object quality = 1,
+        object enchantment = 0)
         => new(
             kind switch
             {
