@@ -118,6 +118,29 @@ A simple captured-record visualization is provided under:
 
 This is only a visualization of stored observed records. It does not calculate or label a market trend.
 
+### Runtime Diagnostics
+
+A dedicated diagnostics boundary and UI were added without fabricating runtime state.
+
+The diagnostics state starts as `UNKNOWN` and changes only when runtime integration components explicitly report events.
+
+Tracked fields:
+
+- AFM Core status
+- Receiver status
+- Last ResponseKind
+- Last Response time
+- Last Response record count
+- Last Adapter conversion count
+- Last ObservationId
+- Last Observation record count
+- Last persistence count
+- Last error
+
+`AfrmMarketAdapter.BuildConfiguredReceiver()` reports receiver initialization only after the receiver is actually built. Adapter conversion reports actual mapped record count. Observation processing and SQLite persistence report their actual event counts when the same diagnostics instance is supplied.
+
+The current App host does not claim that AFM Core is connected because it does not establish an AFM runtime session by itself.
+
 ### Raw-ish Inspection
 
 The Data and Observation Detail screens expose:
@@ -223,6 +246,18 @@ When runtime becomes available:
 10. Use the UI Data and Observation screens to capture the exact runtime behavior before adding higher-level market semantics.
 
 ## Verification Status
+
+Local build: UNAVAILABLE in the current environment (the execution environment does not have the .NET SDK installed).
+
+Local tests: UNAVAILABLE for the same reason.
+
+CI build/test: no workflow run is currently reported for the latest phase commit.
+
+Runtime: UNAVAILABLE; PC-room validation remains the runtime gate.
+
+The diagnostics unit tests were added but could not be executed locally.
+
+## Verification Status (historical wording)
 
 Local build: UNAVAILABLE in the current environment.
 
