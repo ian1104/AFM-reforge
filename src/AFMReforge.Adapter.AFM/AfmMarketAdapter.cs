@@ -25,7 +25,9 @@ public sealed class AfmMarketAdapter
             ?? throw new InvalidOperationException("AFM Core does not expose RegisterHandlers(builder).");
         register.Invoke(afmCore, [builder]);
         RegisterTypedMarketSubscriptions(builder);
-        return builder.Build();
+        var receiver = builder.Build();
+        _diagnostics?.MarkReceiverInitialized();
+        return receiver;
     }
 
     public void ProcessMockResponse<TResponse>(TResponse response) where TResponse : class
