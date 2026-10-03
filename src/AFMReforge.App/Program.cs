@@ -1,14 +1,17 @@
 using AFMReforge.Infrastructure;
 using AFMReforge.App;
 
+var demoMode = string.Equals(Environment.GetEnvironmentVariable("AFM_REFORGE_DEMO"), "1", StringComparison.OrdinalIgnoreCase);
 var databasePath = Environment.GetEnvironmentVariable("AFM_REFORGE_DB")
-    ?? Path.Combine(AppContext.BaseDirectory, "afm-reforge.db");
+    ?? Path.Combine(AppContext.BaseDirectory, demoMode ? "afm-reforge-demo.db" : "afm-reforge.db");
 
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.UseUrls(Environment.GetEnvironmentVariable("ASPNETCORE_URLS") ?? "http://localhost:5180");
 
 var app = builder.Build();
 var store = new SqliteMarketObservationStore(databasePath);
+if (demoMode)
+    DemoDataSeeder.SeedIfEmpty(store);
 
 app.MapStaticAssets();
 app.MapGet("/", () => Results.Redirect("/index.html"));
