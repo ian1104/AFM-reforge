@@ -6,10 +6,12 @@ var databasePath = Environment.GetEnvironmentVariable("AFM_REFORGE_DB")
     ?? Path.Combine(AppContext.BaseDirectory, demoMode ? "afm-reforge-demo.db" : "afm-reforge.db");
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddSingleton<RuntimeDiagnosticsState>();
 builder.WebHost.UseUrls(Environment.GetEnvironmentVariable("ASPNETCORE_URLS") ?? "http://localhost:5180");
 
 var app = builder.Build();
-var store = new SqliteMarketObservationStore(databasePath);
+var diagnostics = app.Services.GetRequiredService<RuntimeDiagnosticsState>();
+var store = new SqliteMarketObservationStore(databasePath, diagnostics);
 if (demoMode)
     DemoDataSeeder.SeedIfEmpty(store);
 
