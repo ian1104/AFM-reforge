@@ -11,6 +11,7 @@ var app = builder.Build();
 var store = new SqliteMarketObservationStore(databasePath);
 
 app.MapStaticAssets();
+app.MapGet("/", () => Results.Redirect("/index.html"));
 ReforgeUiEndpoints.Map(app, store);
 
 app.MapGet("/api/status", () => Results.Ok(new
