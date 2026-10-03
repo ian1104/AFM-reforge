@@ -8,6 +8,8 @@ public static class ReforgeUiEndpoints
 {
     public static void Map(WebApplication app, SqliteMarketObservationStore store)
     {
+        app.MapGet("/api/diagnostics", (RuntimeDiagnosticsState diagnostics) => Results.Ok(diagnostics.Snapshot()));
+
         app.MapGet("/api/overview", () =>
         {
             var observations = store.ReadObservations();
