@@ -128,10 +128,10 @@ function recordTable(rows){
 async function loadGroups(){
   const rows=await api("/api/groups?limit=200");
   $("groupsList").innerHTML=rows.length?'<div class="panel table-wrap"><table><thead><tr><th>Grouping Key</th><th>Records</th><th>Min Observed Unit Price</th><th>Max Observed Unit Price</th><th>Average Observed Unit Price</th><th>Total Observed Amount</th><th>Total Observed Notional</th></tr></thead><tbody>'+
-  rows.map(x=>'<tr class="clickable" onclick="openGroup('+encodeURIComponent(JSON.stringify(x.key))+')"><td class="mono">'+esc(x.key.itemTypeId)+' · '+esc(x.key.locationId)+' · Q'+esc(x.key.qualityLevel)+' · E'+esc(x.key.enchantmentLevel)+' · '+esc(x.key.auctionType)+'</td><td>'+number(x.recordCount)+'</td><td>'+number(x.metrics.minUnitPriceSilver)+'</td><td>'+number(x.metrics.maxUnitPriceSilver)+'</td><td>'+number(x.metrics.averageUnitPriceSilver)+'</td><td>'+number(x.metrics.totalAmount)+'</td><td>'+number(x.metrics.totalNotionalSilver)+'</td></tr>').join("")+
+  rows.map(x=>'<tr class="clickable" onclick="openGroup('+JSON.stringify(JSON.stringify(x.key))+')"><td class="mono">'+esc(x.key.itemTypeId)+' · '+esc(x.key.locationId)+' · Q'+esc(x.key.qualityLevel)+' · E'+esc(x.key.enchantmentLevel)+' · '+esc(x.key.auctionType)+'</td><td>'+number(x.recordCount)+'</td><td>'+number(x.metrics.minUnitPriceSilver)+'</td><td>'+number(x.metrics.maxUnitPriceSilver)+'</td><td>'+number(x.metrics.averageUnitPriceSilver)+'</td><td>'+number(x.metrics.totalAmount)+'</td><td>'+number(x.metrics.totalNotionalSilver)+'</td></tr>').join("")+
   '</tbody></table></div>':'<div class="panel empty">No groups available.</div>';
 }
-function openGroup(encoded){state.selectedGroup=JSON.parse(decodeURIComponent(encoded));setPage("analysis");loadAnalysis()}
+function openGroup(json){state.selectedGroup=JSON.parse(json);setPage("analysis");loadAnalysis()}
 async function loadAnalysis(){
   if(!state.selectedGroup)return;
   const k=state.selectedGroup;
@@ -144,7 +144,13 @@ async function loadAnalysis(){
   ["Count",m.count],["Minimum Observed Unit Price",m.minUnitPriceSilver],["Maximum Observed Unit Price",m.maxUnitPriceSilver],["Average Observed Unit Price",m.averageUnitPriceSilver],["Total Observed Amount",m.totalAmount],["Total Observed Notional",m.totalNotionalSilver]
   ].map(([a,b])=>'<div class="metric"><small>'+a+'</small><strong>'+number(b)+'</strong></div>').join("")+'</div>'+
   '<div class="section panel"><div class="section-head" style="padding:16px 16px 0"><h2>Observed Unit Price Over Captured Records</h2></div><div class="chart">'+chartHtml(x.points)+'</div></div>'+
-  '<div class="section panel">'+recordTable(x.points.map(p=>({storageRecordId:p.storageRecordId,capturedAt:p.capturedAt,unitPriceSilver:p.unitPriceSilver,amount:p.amount})))+'</div>';
+  '<div class="section panel"><div class="section-head" style="padding:16px 16px 0"><h2>Captured Records Used by Metrics</h2></div>'+observedPointTable(x.points)+'</div>';
+}
+function observedPointTable(rows){
+  if(!rows?.length)return'<div class="empty">No captured records for this grouping.</div>';
+  return'<div class="table-wrap"><table><thead><tr><th>StorageRecordId</th><th>CapturedAt</th><th>Observed Unit Price</th><th>Observed Amount</th></tr></thead><tbody>'+
+  rows.map(r=>'<tr><td>'+fmt(r.storageRecordId)+'</td><td>'+date(r.capturedAt)+'</td><td>'+fmt(r.unitPriceSilver)+'</td><td>'+fmt(r.amount)+'</td></tr>').join("")+
+  '</tbody></table></div>';
 }
 function chartHtml(points){
   if(!points?.length)return'<div class="empty">No captured records for this grouping.</div>';
