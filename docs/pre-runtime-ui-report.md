@@ -257,16 +257,6 @@ Runtime: UNAVAILABLE; PC-room validation remains the runtime gate.
 
 The diagnostics unit tests were added but could not be executed locally.
 
-## Verification Status (historical wording)
-
-Local build: UNAVAILABLE in the current environment.
-
-Local tests: UNAVAILABLE in the current environment.
-
-CI build/test: pending verification for this phase.
-
-Runtime: UNAVAILABLE; PC-room validation remains the runtime gate.
-
 ## Conclusion
 
 The repository now has a usable pre-runtime inspection UI without committing unresolved market semantics.
