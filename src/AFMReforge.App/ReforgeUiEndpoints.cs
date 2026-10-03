@@ -29,7 +29,7 @@ public static class ReforgeUiEndpoints
                 responseKinds = observations
                     .GroupBy(x => x.ResponseKind)
                     .ToDictionary(x => x.Key.ToString(), x => x.Count()),
-                environment = "LIVE UI / RUNTIME VALIDATION PENDING"
+                environment = string.Equals(Environment.GetEnvironmentVariable("AFM_REFORGE_DEMO"), "1", StringComparison.OrdinalIgnoreCase) ? "DEMO" : "STORED DATA"
             });
         });
 
