@@ -13,10 +13,12 @@ namespace AFMReforge.Infrastructure;
 public sealed class SqliteMarketObservationStore : IMarketObservationStore, IMarketObservationQuery
 {
     private readonly string _connectionString;
+    private readonly RuntimeDiagnosticsState? _diagnostics;
 
-    public SqliteMarketObservationStore(string databasePath)
+    public SqliteMarketObservationStore(string databasePath, RuntimeDiagnosticsState? diagnostics = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(databasePath);
+        _diagnostics = diagnostics;
         _connectionString = new SqliteConnectionStringBuilder
         {
             DataSource = databasePath,
@@ -62,6 +64,7 @@ public sealed class SqliteMarketObservationStore : IMarketObservationStore, IMar
         }
 
         transaction.Commit();
+        _diagnostics?.MarkPersistence(observation.Records.Count);
     }
 
     public void Persist(MarketObservationInput input)
