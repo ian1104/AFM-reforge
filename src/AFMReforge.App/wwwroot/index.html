@@ -20,6 +20,7 @@ button,input,select{font:inherit}button{cursor:pointer}.shell{display:grid;grid-
     <button data-page="groups">Groups</button>
     <button data-page="analysis">Analysis</button>
     <button data-page="data">Data</button>
+    <button data-page="diagnostics">Diagnostics</button>
   </nav>
   <div class="status"><span class="dot"></span>Runtime validation pending</div>
 </aside>
@@ -64,6 +65,12 @@ button,input,select{font:inherit}button{cursor:pointer}.shell{display:grid;grid-
       </div>
       <div id="dataList"></div>
     </section>
+
+    <section id="page-diagnostics" class="page">
+      <div class="section-head"><h2>Runtime Diagnostics</h2><button class="action" onclick="loadDiagnostics()">Refresh</button></div>
+      <div class="notice">Diagnostics only reports state explicitly supplied by the runtime integration components. UNKNOWN / NOT VERIFIED is intentional when no live source has supplied a value.</div>
+      <div id="diagnosticsView"></div>
+    </section>
   </div>
 </main>
 </div>
@@ -81,9 +88,28 @@ function setPage(page){
   state.page=page; document.querySelectorAll(".page").forEach(x=>x.classList.remove("active"));
   document.querySelectorAll(".nav button").forEach(x=>x.classList.toggle("active",x.dataset.page===page));
   $("page-"+page).classList.add("active"); $("title").textContent=page[0].toUpperCase()+page.slice(1);
-  if(page==="overview")loadOverview(); if(page==="observations")loadObservations(); if(page==="groups")loadGroups(); if(page==="data")loadData(0);
+  if(page==="overview")loadOverview(); if(page==="observations")loadObservations(); if(page==="groups")loadGroups(); if(page==="data")loadData(0); if(page==="diagnostics")loadDiagnostics();
 }
 document.querySelectorAll(".nav button").forEach(b=>b.onclick=()=>setPage(b.dataset.page));
+async function loadDiagnostics(){
+  try{
+    const x=await api("/api/diagnostics");
+    const rows=[
+      ["AFM Core",x.afmCoreStatus],
+      ["Receiver",x.receiverStatus],
+      ["Last Response Kind",x.lastResponseKind],
+      ["Last Response Time",date(x.lastResponseTime)],
+      ["Last Response Record Count",number(x.lastResponseRecordCount)],
+      ["Last Adapter Record Count",number(x.lastAdapterRecordCount)],
+      ["Last Observation ID",x.lastObservationId||"UNKNOWN"],
+      ["Last Observation Record Count",number(x.lastObservationRecordCount)],
+      ["Last Persistence Count",number(x.lastPersistenceCount)],
+      ["Last Error",x.lastError||"NONE"]
+    ];
+    $("diagnosticsView").innerHTML='<div class="panel"><div class="kv">'+rows.map(([k,v])=>'<div>'+esc(k)+'</div><div class="'+(String(v).includes("UNKNOWN")?"muted":"")+'">'+esc(v)+'</div>').join("")+'</div></div>';
+  }catch(e){$("diagnosticsView").innerHTML='<div class="panel empty error">'+esc(e.message)+'</div>'}
+}
+
 async function loadOverview(){
   try{
     const x=await api("/api/overview");
