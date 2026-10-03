@@ -9,15 +9,18 @@ public sealed class MarketProcessing
     private readonly MarketObservationState _state;
     private readonly IMarketObservationStore? _store;
     private readonly IMarketObservationFactory _observationFactory;
+    private readonly RuntimeDiagnosticsState? _diagnostics;
 
     public MarketProcessing(
         MarketObservationState? state = null,
         IMarketObservationStore? store = null,
-        IMarketObservationFactory? observationFactory = null)
+        IMarketObservationFactory? observationFactory = null,
+        RuntimeDiagnosticsState? diagnostics = null)
     {
         _state = state ?? new MarketObservationState();
         _store = store;
         _observationFactory = observationFactory ?? new MarketObservationFactory();
+        _diagnostics = diagnostics;
     }
 
     public MarketObservationState State => _state;
@@ -27,6 +30,7 @@ public sealed class MarketProcessing
         ArgumentNullException.ThrowIfNull(input);
 
         var observation = _observationFactory.Create(input);
+        _diagnostics?.MarkObservation(observation.ObservationId, observation.Records.Count);
 
         // Persist the complete candidate first so its ObservationId can be
         // associated with all generated records in one storage transaction.
