@@ -104,7 +104,7 @@ async function loadObservations(){
   if(state.selectedObservation)return;
   const rows=await api("/api/observations?limit=100");
   $("observationList").innerHTML=rows.length?'<div class="panel table-wrap"><table><thead><tr><th>ObservationId</th><th>Captured At</th><th>Response Kind</th><th>Records</th><th>Scope</th></tr></thead><tbody>'+
-    rows.map(x=>'<tr class="clickable" onclick="openObservation(\\''+x.observationId+'\\')"><td class="mono">'+esc(x.observationId)+'</td><td>'+date(x.capturedAt)+'</td><td><span class="pill">'+esc(x.responseKind)+'</span></td><td>'+number(x.recordCount)+'</td><td>'+scopeSummary(x.scope)+'</td></tr>').join("")+
+    rows.map(x=>'<tr class="clickable" onclick="openObservation(\''+x.observationId+'\')"><td class="mono">'+esc(x.observationId)+'</td><td>'+date(x.capturedAt)+'</td><td><span class="pill">'+esc(x.responseKind)+'</span></td><td>'+number(x.recordCount)+'</td><td>'+scopeSummary(x.scope)+'</td></tr>').join("")+
     '</tbody></table></div>':'<div class="panel empty">No observations yet.<br><span class="muted">Start Albion + AFM capture to collect observed market data.</span></div>';
 }
 function scopeSummary(s){if(!s)return"—";return [s.itemTypes?.length+" item(s)",s.locations?.length+" location(s)",s.qualities?.length+" quality value(s)",s.enchantments?.length+" enchantment value(s)"].join(" · ")}
@@ -138,7 +138,7 @@ async function loadAnalysis(){
   const q=new URLSearchParams(k); const x=await api("/api/analysis?"+q);
   $("analysisEmpty").classList.add("hide");$("analysisView").classList.remove("hide");
   const m=x.metrics;
-  $("analysisView").innerHTML='<button class="action back" onclick="setPage(\\'groups\\')">← Back to groups</button>'+
+  $("analysisView").innerHTML='<button class="action back" onclick="setPage(\'groups\')">← Back to groups</button>'+
   '<div class="panel" style="padding:16px"><div class="section-head"><h2>Grouping Key</h2></div><div class="mono">'+esc(k.itemTypeId)+' · '+esc(k.locationId)+' · Q'+esc(k.qualityLevel)+' · E'+esc(k.enchantmentLevel)+' · '+esc(k.auctionType)+'</div></div>'+
   '<div class="section metric-grid">'+[
   ["Count",m.count],["Minimum Observed Unit Price",m.minUnitPriceSilver],["Maximum Observed Unit Price",m.maxUnitPriceSilver],["Average Observed Unit Price",m.averageUnitPriceSilver],["Total Observed Amount",m.totalAmount],["Total Observed Notional",m.totalNotionalSilver]
