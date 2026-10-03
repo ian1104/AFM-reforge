@@ -23,7 +23,7 @@ app.MapGet("/api/status", () => Results.Ok(new
     mode = "PRE-RUNTIME",
     runtimeIntegration = "PENDING VALIDATION",
     databasePath,
-    head = "5b25a81ebb16981380d82d1233d0a138ff9b94bc"
+    preRuntimeBase = "5b25a81ebb16981380d82d1233d0a138ff9b94bc"
 }));
 
 app.Run();
