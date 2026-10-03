@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AFM Reforge</title>
+<style>
+:root{--bg:#0b0d12;--panel:#12161e;--panel2:#181d27;--line:#28303d;--text:#e7ebf2;--muted:#8993a3;--accent:#8aa7ff;--good:#72d6a1;--warn:#e2b96f;--danger:#e27b88}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+button,input,select{font:inherit}button{cursor:pointer}.shell{display:grid;grid-template-columns:230px 1fr;min-height:100vh}.side{border-right:1px solid var(--line);padding:24px 16px;background:#0d1016}.brand{font-size:20px;font-weight:750;letter-spacing:-.03em;padding:0 10px 24px}.brand small{display:block;color:var(--muted);font-size:11px;font-weight:500;letter-spacing:.08em;margin-top:4px}.nav{display:grid;gap:5px}.nav button{border:0;background:transparent;color:var(--muted);text-align:left;padding:10px 12px;border-radius:8px}.nav button:hover,.nav button.active{background:var(--panel2);color:var(--text)}.status{position:absolute;bottom:18px;left:16px;right:16px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;color:var(--muted);font-size:11px}.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--warn);margin-right:6px}.main{min-width:0}.top{height:68px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 28px}.top h1{font-size:18px;margin:0}.content{padding:28px;max-width:1500px;margin:auto}.page{display:none}.page.active{display:block}.muted{color:var(--muted)}.grid{display:grid;gap:14px}.cards{grid-template-columns:repeat(4,minmax(0,1fr))}.card,.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px}.card{padding:18px}.card .label{color:var(--muted);font-size:12px}.card .value{font-size:25px;font-weight:700;margin-top:8px}.section{margin-top:24px}.section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}.section-head h2{font-size:15px;margin:0}.panel{overflow:hidden}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:720px}th,td{padding:11px 13px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}th{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em;background:#10141b}tr.clickable:hover{background:var(--panel2);cursor:pointer}.pill{display:inline-flex;padding:3px 7px;border-radius:999px;background:#202838;color:#b9c8ff;font-size:11px}.empty{padding:48px 20px;text-align:center;color:var(--muted)}.toolbar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}.toolbar input,.toolbar select{background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:7px;padding:8px 9px;min-width:130px}.toolbar button,.action{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:7px;padding:8px 12px}.toolbar button:hover,.action:hover{border-color:#44516a}.detail{display:grid;grid-template-columns:320px 1fr;gap:16px}.kv{display:grid;grid-template-columns:130px 1fr;gap:9px;padding:16px}.kv div:nth-child(odd){color:var(--muted)}.scope{display:grid;gap:10px}.scope-row{display:flex;gap:8px;align-items:flex-start}.scope-row b{width:100px;color:var(--muted);font-size:12px}.list{display:flex;flex-wrap:wrap;gap:6px}.metric-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}.metric{padding:14px;background:var(--panel2);border-radius:9px}.metric small{display:block;color:var(--muted);font-size:11px}.metric strong{display:block;margin-top:6px;font-size:18px}.chart{height:250px;padding:12px}.chart svg{width:100%;height:100%;overflow:visible}.back{margin-bottom:14px}.notice{border:1px solid #4a3f27;background:#211c12;color:#d7c69e;border-radius:9px;padding:11px 13px;margin-bottom:16px;font-size:12px}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}.raw{white-space:pre-wrap;word-break:break-word}.pagination{display:flex;gap:8px;justify-content:flex-end;padding:12px}.error{color:#ff9aa6}.hide{display:none!important}@media(max-width:950px){.shell{grid-template-columns:1fr}.side{position:sticky;top:0;z-index:4;border-right:0;border-bottom:1px solid var(--line);padding:12px}.brand{padding:4px 8px 10px}.nav{display:flex;overflow:auto}.nav button{white-space:nowrap}.status{display:none}.content{padding:18px}.cards{grid-template-columns:repeat(2,minmax(0,1fr))}.detail{grid-template-columns:1fr}.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.top{padding:0 18px}}
+</style>
+</head>
+<body>
+<div class="shell">
+<aside class="side">
+  <div class="brand">AFM Reforge<small>PRE-RUNTIME UI</small></div>
+  <nav class="nav">
+    <button data-page="overview" class="active">Overview</button>
+    <button data-page="observations">Observations</button>
+    <button data-page="groups">Groups</button>
+    <button data-page="analysis">Analysis</button>
+    <button data-page="data">Data</button>
+  </nav>
+  <div class="status"><span class="dot"></span>Runtime validation pending</div>
+</aside>
+<main class="main">
+  <header class="top"><h1 id="title">Overview</h1><span class="muted mono" id="dbLabel"></span></header>
+  <div class="content">
+    <div class="notice">This UI displays stored and observed data only. It does not infer market state, snapshots, trends, or recommendations.</div>
+
+    <section id="page-overview" class="page active">
+      <div id="overviewCards" class="grid cards"></div>
+      <div class="section panel"><div class="section-head" style="padding:16px 16px 0"><h2>Stored response kinds</h2></div><div id="responseKinds" style="padding:16px"></div></div>
+      <div class="section panel"><div class="section-head" style="padding:16px 16px 0"><h2>Runtime boundary</h2></div><div style="padding:16px" class="muted">AFM response → Reforge adapter → Observation → SQLite → Query → UI. Actual Albion runtime semantics remain pending PC-room validation.</div></div>
+    </section>
+
+    <section id="page-observations" class="page">
+      <div id="observationList"></div>
+      <div id="observationDetail" class="hide"></div>
+    </section>
+
+    <section id="page-groups" class="page">
+      <div class="section-head"><h2>Grouping Keys</h2><button class="action" onclick="loadGroups()">Refresh</button></div>
+      <div id="groupsList"></div>
+    </section>
+
+    <section id="page-analysis" class="page">
+      <div id="analysisEmpty" class="empty panel">Select a group from Groups to inspect its observed metrics.</div>
+      <div id="analysisView" class="hide"></div>
+    </section>
+
+    <section id="page-data" class="page">
+      <div class="toolbar">
+        <input id="fItem" placeholder="ItemTypeId">
+        <input id="fLocation" placeholder="LocationId">
+        <input id="fQuality" type="number" min="0" placeholder="Quality">
+        <input id="fEnchant" type="number" min="0" placeholder="Enchantment">
+        <select id="fResponse"><option value="">ResponseKind</option><option>Offers</option><option>Requests</option><option>LoadoutOffers</option></select>
+        <input id="fObservation" placeholder="ObservationId">
+        <input id="fFrom" type="datetime-local" title="From">
+        <input id="fTo" type="datetime-local" title="To">
+        <button onclick="loadData(0)">Search</button>
+        <button onclick="clearFilters()">Clear</button>
+      </div>
+      <div id="dataList"></div>
+    </section>
+  </div>
+</main>
+</div>
+
+<script>
+const state={page:"overview",offset:0,selectedObservation:null,selectedGroup:null};
+const $=id=>document.getElementById(id);
+const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const arr=v=>Array.isArray(v)?v:v==null?[]:[v];
+const fmt=v=>v==null||v===""?"—":esc(v);
+const number=v=>v==null?"—":Number(v).toLocaleString();
+const date=v=>v?new Date(v).toLocaleString():"—";
+async function api(url){const r=await fetch(url);if(!r.ok)throw new Error(await r.text());return r.json()}
+function setPage(page){
+  state.page=page; document.querySelectorAll(".page").forEach(x=>x.classList.remove("active"));
+  document.querySelectorAll(".nav button").forEach(x=>x.classList.toggle("active",x.dataset.page===page));
+  $("page-"+page).classList.add("active"); $("title").textContent=page[0].toUpperCase()+page.slice(1);
+  if(page==="overview")loadOverview(); if(page==="observations")loadObservations(); if(page==="groups")loadGroups(); if(page==="data")loadData(0);
+}
+document.querySelectorAll(".nav button").forEach(b=>b.onclick=()=>setPage(b.dataset.page));
+async function loadOverview(){
+  try{
+    const x=await api("/api/overview");
+    $("overviewCards").innerHTML=[
+      ["Stored Observations",x.observations],["Stored Records",x.records],["Known Item Types",x.itemTypes],["Known Locations",x.locations],
+      ["Latest Captured At",date(x.latestCapturedAt)],["Environment",x.environment]
+    ].map(([l,v])=>'<div class="card"><div class="label">'+esc(l)+'</div><div class="value" style="font-size:'+(l==="Environment"?"14px":"25px")+'">'+esc(v)+'</div></div>').join("");
+    const rk=x.responseKinds||{}; $("responseKinds").innerHTML=Object.keys(rk).length?Object.entries(rk).map(([k,v])=>'<span class="pill" style="margin-right:6px">'+esc(k)+' '+number(v)+'</span>').join(""):'<span class="muted">No stored observations yet.</span>';
+  }catch(e){$("overviewCards").innerHTML='<div class="panel empty error">'+esc(e.message)+'</div>'}
+}
+function scopeHtml(s){
+  if(!s)return '<span class="muted">—</span>';
+  return '<div class="scope">'+[
+    ["Items",s.itemTypes],["Locations",s.locations],["Qualities",s.qualities],["Enchantments",s.enchantments],["Auction Types",s.auctionTypes]
+  ].map(([k,v])=>'<div class="scope-row"><b>'+k+'</b><div class="list">'+arr(v).map(x=>'<span class="pill">'+esc(x)+'</span>').join("")+'</div></div>').join("")+'</div>';
+}
+async function loadObservations(){
+  if(state.selectedObservation)return;
+  const rows=await api("/api/observations?limit=100");
+  $("observationList").innerHTML=rows.length?'<div class="panel table-wrap"><table><thead><tr><th>ObservationId</th><th>Captured At</th><th>Response Kind</th><th>Records</th><th>Scope</th></tr></thead><tbody>'+
+    rows.map(x=>'<tr class="clickable" onclick="openObservation(\\''+x.observationId+'\\')"><td class="mono">'+esc(x.observationId)+'</td><td>'+date(x.capturedAt)+'</td><td><span class="pill">'+esc(x.responseKind)+'</span></td><td>'+number(x.recordCount)+'</td><td>'+scopeSummary(x.scope)+'</td></tr>').join("")+
+    '</tbody></table></div>':'<div class="panel empty">No observations yet.<br><span class="muted">Start Albion + AFM capture to collect observed market data.</span></div>';
+}
+function scopeSummary(s){if(!s)return"—";return [s.itemTypes?.length+" item(s)",s.locations?.length+" location(s)",s.qualities?.length+" quality value(s)",s.enchantments?.length+" enchantment value(s)"].join(" · ")}
+async function openObservation(id){
+  state.selectedObservation=id;
+  const x=await api("/api/observations/"+id);
+  $("observationList").classList.add("hide"); $("observationDetail").classList.remove("hide");
+  $("observationDetail").innerHTML='<button class="action back" onclick="closeObservation()">← Back to observations</button>'+
+    '<div class="detail"><div class="panel"><div class="section-head" style="padding:16px"><h2>Observation</h2></div><div class="kv">'+
+    '<div>ObservationId</div><div class="mono">'+esc(x.observationId)+'</div><div>Response Kind</div><div>'+esc(x.responseKind)+'</div><div>Captured At</div><div>'+date(x.capturedAt)+'</div><div>Record Count</div><div>'+number(x.recordCount)+'</div></div></div>'+
+    '<div class="panel"><div class="section-head" style="padding:16px"><h2>Observation Scope</h2></div><div style="padding:16px">'+scopeHtml(x.scope)+'</div></div></div>'+
+    '<div class="section panel"><div class="section-head" style="padding:16px 16px 0"><h2>Observed Records</h2></div>'+recordTable(x.records)+'</div>';
+}
+function closeObservation(){state.selectedObservation=null;$("observationDetail").classList.add("hide");$("observationList").classList.remove("hide");loadObservations()}
+function recordTable(rows){
+  if(!rows?.length)return'<div class="empty">No records in this observation.</div>';
+  return'<div class="table-wrap"><table><thead><tr><th>StorageRecordId</th><th>OrderId</th><th>Item</th><th>Item Group</th><th>Location</th><th>Q</th><th>E</th><th>UnitPriceSilver</th><th>Amount</th><th>AuctionType</th><th>Expires</th><th>DistanceFee</th><th>CapturedAt</th></tr></thead><tbody>'+
+  rows.map(r=>'<tr><td>'+fmt(r.storageRecordId)+'</td><td class="mono">'+fmt(r.orderId)+'</td><td>'+fmt(r.itemTypeId)+'</td><td>'+fmt(r.itemGroupTypeId)+'</td><td>'+fmt(r.locationId)+'</td><td>'+fmt(r.qualityLevel)+'</td><td>'+fmt(r.enchantmentLevel)+'</td><td>'+fmt(r.unitPriceSilver)+'</td><td>'+fmt(r.amount)+'</td><td>'+fmt(r.auctionType)+'</td><td>'+fmt(r.expires)+'</td><td>'+fmt(r.distanceFee)+'</td><td>'+date(r.capturedAt)+'</td></tr>').join("")+
+  '</tbody></table></div>';
+}
+async function loadGroups(){
+  const rows=await api("/api/groups?limit=200");
+  $("groupsList").innerHTML=rows.length?'<div class="panel table-wrap"><table><thead><tr><th>Grouping Key</th><th>Records</th><th>Min Observed Unit Price</th><th>Max Observed Unit Price</th><th>Average Observed Unit Price</th><th>Total Observed Amount</th><th>Total Observed Notional</th></tr></thead><tbody>'+
+  rows.map(x=>'<tr class="clickable" onclick="openGroup('+encodeURIComponent(JSON.stringify(x.key))+')"><td class="mono">'+esc(x.key.itemTypeId)+' · '+esc(x.key.locationId)+' · Q'+esc(x.key.qualityLevel)+' · E'+esc(x.key.enchantmentLevel)+' · '+esc(x.key.auctionType)+'</td><td>'+number(x.recordCount)+'</td><td>'+number(x.metrics.minUnitPriceSilver)+'</td><td>'+number(x.metrics.maxUnitPriceSilver)+'</td><td>'+number(x.metrics.averageUnitPriceSilver)+'</td><td>'+number(x.metrics.totalAmount)+'</td><td>'+number(x.metrics.totalNotionalSilver)+'</td></tr>').join("")+
+  '</tbody></table></div>':'<div class="panel empty">No groups available.</div>';
+}
+function openGroup(encoded){state.selectedGroup=JSON.parse(decodeURIComponent(encoded));setPage("analysis");loadAnalysis()}
+async function loadAnalysis(){
+  if(!state.selectedGroup)return;
+  const k=state.selectedGroup;
+  const q=new URLSearchParams(k); const x=await api("/api/analysis?"+q);
+  $("analysisEmpty").classList.add("hide");$("analysisView").classList.remove("hide");
+  const m=x.metrics;
+  $("analysisView").innerHTML='<button class="action back" onclick="setPage(\\'groups\\')">← Back to groups</button>'+
+  '<div class="panel" style="padding:16px"><div class="section-head"><h2>Grouping Key</h2></div><div class="mono">'+esc(k.itemTypeId)+' · '+esc(k.locationId)+' · Q'+esc(k.qualityLevel)+' · E'+esc(k.enchantmentLevel)+' · '+esc(k.auctionType)+'</div></div>'+
+  '<div class="section metric-grid">'+[
+  ["Count",m.count],["Minimum Observed Unit Price",m.minUnitPriceSilver],["Maximum Observed Unit Price",m.maxUnitPriceSilver],["Average Observed Unit Price",m.averageUnitPriceSilver],["Total Observed Amount",m.totalAmount],["Total Observed Notional",m.totalNotionalSilver]
+  ].map(([a,b])=>'<div class="metric"><small>'+a+'</small><strong>'+number(b)+'</strong></div>').join("")+'</div>'+
+  '<div class="section panel"><div class="section-head" style="padding:16px 16px 0"><h2>Observed Unit Price Over Captured Records</h2></div><div class="chart">'+chartHtml(x.points)+'</div></div>'+
+  '<div class="section panel">'+recordTable(x.points.map(p=>({storageRecordId:p.storageRecordId,capturedAt:p.capturedAt,unitPriceSilver:p.unitPriceSilver,amount:p.amount})))+'</div>';
+}
+function chartHtml(points){
+  if(!points?.length)return'<div class="empty">No captured records for this grouping.</div>';
+  const vals=points.map(p=>Number(p.unitPriceSilver)).filter(Number.isFinite);if(!vals.length)return'<div class="empty">No numeric observed unit prices.</div>';
+  const min=Math.min(...vals),max=Math.max(...vals),range=max-min||1,w=900,h=200,pad=20;
+  const pts=vals.map((v,i)=>{const x=pad+(i*Math.max(1,(w-pad*2)/(Math.max(vals.length-1,1))));const y=h-pad-((v-min)/range)*(h-pad*2);return [x,y,v]});
+  return'<svg viewBox="0 0 '+w+' '+h+'" role="img" aria-label="Observed Unit Price Over Captured Records"><line x1="'+pad+'" y1="'+(h-pad)+'" x2="'+(w-pad)+'" y2="'+(h-pad)+'" stroke="#28303d"/><polyline fill="none" stroke="#8aa7ff" stroke-width="2" points="'+pts.map(p=>p[0]+','+p[1]).join(" ")+'"/>'+pts.map(p=>'<circle cx="'+p[0]+'" cy="'+p[1]+'" r="3" fill="#8aa7ff"><title>'+number(p[2])+'</title></circle>').join("")+'</svg>';
+}
+async function loadData(offset){
+  const p=new URLSearchParams();
+  [["itemTypeId","fItem"],["locationId","fLocation"],["qualityLevel","fQuality"],["enchantmentLevel","fEnchant"],["responseKind","fResponse"],["observationId","fObservation"]].forEach(([q,id])=>{if($(id).value)p.set(q,$(id).value)});
+  if($("fFrom").value)p.set("from",new Date($("fFrom").value).toISOString());
+  if($("fTo").value)p.set("to",new Date($("fTo").value).toISOString());
+  p.set("limit","100");p.set("offset",offset);
+  try{const rows=await api("/api/records?"+p);$("dataList").innerHTML=rows.length?'<div class="panel">'+recordTable(rows)+'</div><div class="pagination"><button class="action" onclick="loadData('+(Math.max(0,offset-100))+')">Previous</button><button class="action" onclick="loadData('+(offset+100)+')">Next</button></div>':'<div class="panel empty">No records match the current filters.</div>'}catch(e){$("dataList").innerHTML='<div class="panel empty error">'+esc(e.message)+'</div>'}
+}
+function clearFilters(){["fItem","fLocation","fQuality","fEnchant","fResponse","fObservation","fFrom","fTo"].forEach(id=>$(id).value="");loadData(0)}
+loadOverview();
+</script>
+</body>
+</html>
