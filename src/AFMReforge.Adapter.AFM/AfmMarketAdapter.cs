@@ -8,9 +8,13 @@ namespace AFMReforge.Adapter.AFM;
 public sealed class AfmMarketAdapter
 {
     private readonly MarketOrderMapper _marketOrderMapper;
+    private readonly RuntimeDiagnosticsState? _diagnostics;
 
-    public AfmMarketAdapter(MarketOrderMapper? marketOrderMapper = null)
-        => _marketOrderMapper = marketOrderMapper ?? new MarketOrderMapper();
+    public AfmMarketAdapter(MarketOrderMapper? marketOrderMapper = null, RuntimeDiagnosticsState? diagnostics = null)
+    {
+        _marketOrderMapper = marketOrderMapper ?? new MarketOrderMapper();
+        _diagnostics = diagnostics;
+    }
 
     public event Action<MarketObservationInput>? MarketResponseObserved;
 
@@ -49,11 +53,15 @@ public sealed class AfmMarketAdapter
             ? enumerable.Cast<object>().Select(_marketOrderMapper.Map).ToArray()
             : [];
 
+        var capturedAt = ToDateTimeOffset(GetMember(response, "CapturedAt"));
+        _diagnostics?.MarkMarketResponse(kind, records.Length, capturedAt);
+        _diagnostics?.MarkAdapterConversion(records.Length);
+
         return new MarketObservationInput(
             response.GetType().Name,
             kind,
             GetMember(response, "OperationCode"),
-            ToDateTimeOffset(GetMember(response, "CapturedAt")),
+            capturedAt,
             records);
     }
 
