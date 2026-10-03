@@ -280,6 +280,29 @@ public sealed class SqliteMarketObservationStore : IMarketObservationStore, IMar
         return records;
     }
 
+    public IReadOnlyList<StoredMarketObservation> ReadObservations()
+    {
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT ObservationId, CapturedAt, ResponseKind
+            FROM market_observations
+            ORDER BY COALESCE(CapturedAt, '' ) DESC, ObservationId DESC;
+            """;
+
+        using var reader = command.ExecuteReader();
+        var observations = new List<StoredMarketObservation>();
+        while (reader.Read())
+        {
+            observations.Add(new StoredMarketObservation(
+                Guid.Parse(reader.GetString(0)),
+                ReadNullableDateTimeOffset(reader, 1),
+                Enum.Parse<MarketResponseKind>(reader.GetString(2))));
+        }
+
+        return observations;
+    }
+
     public IReadOnlyList<StoredMarketObservationRecord> ReadAll()
     {
         using var connection = OpenConnection();
@@ -454,3 +477,8 @@ public sealed record StoredMarketObservationRecord(
     string? Expires,
     string? DistanceFee,
     string? ResolvedLocation);
+
+public sealed record StoredMarketObservation(
+    Guid ObservationId,
+    DateTimeOffset? CapturedAt,
+    MarketResponseKind ResponseKind);
