@@ -64,7 +64,11 @@ public sealed class ObservedOrderMetricsTests
     [Fact]
     public void NotionalOverflowIsRejectedByCheckedPolicy()
     {
-        var records = new[] { Create(ulong.MaxValue, uint.MaxValue) };
+        var records = new[]
+        {
+            Create(ulong.MaxValue, uint.MaxValue),
+            Create(ulong.MaxValue, uint.MaxValue, orderId: 2)
+        };
 
         Assert.Throws<OverflowException>(() =>
             new ObservedOrderMetricsCalculator().Calculate(records));
