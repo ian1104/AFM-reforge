@@ -55,13 +55,15 @@ https://npcap.com/#download
 
 `AFMReforge.App.exe`를 실행한다.
 
-현재 App은 ASP.NET Core 기반 UI를 호스팅하며 기본 주소는 다음과 같다.
+현재 App의 실제 기본 Host 설정은 다음과 같다.
 
 ```text
 http://localhost:5180
 ```
 
-브라우저에서 해당 주소를 열어 UI를 확인한다.
+`ASPNETCORE_URLS` 환경변수가 지정되어 있으면 해당 값이 우선한다.
+
+브라우저에서 실제 사용 중인 주소를 열어 UI를 확인한다.
 
 ### Step 4 — Diagnostics 확인
 
@@ -124,9 +126,9 @@ Diagnostics / UI
 
 ### .NET Runtime
 
-이 배포본은 `win-x64` self-contained publish를 목표로 한다. 따라서 별도의 .NET Runtime 설치를 전제로 하지 않는다.
+CI에서 `dotnet publish -c Release -r win-x64 --self-contained true`가 성공했고, 실제 publish 산출물에 `AFMReforge.App.runtimeconfig.json`, `hostfxr.dll`, `hostpolicy.dll`, `coreclr.dll` 및 Windows runtime 파일이 포함되어 있음을 확인했다.
 
-단, 이것은 **publish 결과가 실제 self-contained로 생성된 경우에 한한다.** 배포본의 publish 로그/산출물을 확인하기 전에는 이를 실행 검증 결과로 간주하지 않는다.
+따라서 **별도의 .NET Runtime 설치를 전제로 하지 않는다.** 이것은 self-contained 배포본 기준이며, 실제 PC방에서 실행되는 것까지 검증한 것은 아니다.
 
 ### 관리자 권한
 
@@ -150,7 +152,7 @@ Packet capture 권한 확보
 실제 Market Response 수신
 ```
 
-현재 패키지에는 Npcap 설치 프로그램을 임의로 포함하지 않는다.
+현재 PC방 ZIP에는 Npcap 설치 프로그램을 포함하지 않는다.
 
 ## 6. PC방 테스트 순서
 
@@ -169,67 +171,174 @@ Packet capture 권한 확보
 13. Persistence count 확인
 14. Error가 발생하면 내용을 보존
 
-## 7. 기록해야 할 결과
+## 7. Runtime 결과 기록 양식
 
-### 성공
+실제 PC방에서 다음 값을 기록한다.
 
 ```text
-[ ] Process starts
-[ ] UI opens
-[ ] AFM Core initialized
-[ ] Receiver initialized
-[ ] Packet capture works
-[ ] Market Response observed
-[ ] Adapter conversion observed
-[ ] Observation created
-[ ] Persistence completed
+AFM Core:
+Receiver:
+
+First Response:
+Response Kind:
+Record Count:
+
+Adapter Record Count:
+
+Observation ID:
+Observation Record Count:
+
+Persistence Count:
+
+ItemTypeId:
+LocationId:
+Quality:
+Enchantment:
+CapturedAt:
+
+Second Query:
+
+Different Item:
+
+Different City:
+
+AFM coexistence:
+
+Errors:
 ```
 
-### 실패
-
-다음 정보를 함께 기록한다.
-
-- Windows 버전
-- PC방 환경/정책
-- Npcap 설치 여부
-- 관리자 권한 여부
-- 프로그램 시작 여부
-- UI 접속 여부
-- Diagnostics 화면의 마지막 상태
-- Last Error
-- 발생 시각
-- 가능하면 관련 로그/스크린샷
+예를 들어 Response Records / Adapter Records / Observation Records / Persistence Count가 모두 같은 값으로 관측되더라도, 그것만으로 시장 의미가 정확하다고 결론 내리지 않는다.
 
 ## 8. 현재 검증 상태
 
 | 항목 | 상태 |
 |---|---|
-| Windows x64 publish 설정 | CONFIGURED |
-| Self-contained publish 실행 | UNVERIFIED until CI/package run |
-| ZIP 생성 설정 | CONFIGURED |
-| ZIP 실제 생성 | UNVERIFIED until CI/package run |
-| .NET Runtime 별도 설치 필요성 | Self-contained 기준 NO; 실제 package 확인 필요 |
+| Windows x64 publish 설정 | CONFIRMED |
+| Self-contained publish 실행 | CONFIRMED |
+| ZIP 생성 | CONFIRMED |
+| ZIP artifact 생성 | CONFIRMED |
+| ZIP 내부 구조 확인 | CONFIRMED |
+| .NET Runtime 별도 설치 | Self-contained 산출물 기준 불필요 |
 | Npcap 필요성 | AFM Windows capture 경로 기준 REQUIRED/DEPENDENCY |
-| 관리자 권한 | 설치/환경에 따라 필요 가능; UNVERIFIED for this app host |
+| 관리자 권한 | 설치/환경에 따라 필요 가능; 앱 자체는 UNVERIFIED |
+| localhost 기본 포트 | CONFIRMED: 5180 |
 | 실제 PC방 실행 | UNVERIFIED |
 | 실제 packet capture | UNVERIFIED |
 | 실제 Market Response | UNVERIFIED |
 | Runtime Integration Gate | NOT PASSED |
 
-## 9. 범위 제한
+## 9. CI 배포 검증 결과
 
-현재 단계에서는 다음 기능을 추가하지 않는다.
+최종 검증 run:
+
+```text
+Workflow: Windows PC Cafe Package
+Run: #30
+HEAD: b4e554e5dcf2367e6aa1fda3df8d417206bcd0c8
+```
+
+단계별 결과:
+
+```text
+Checkout                 PASS
+.NET setup               PASS
+Restore                  PASS
+Build                    PASS
+Test                     PASS
+win-x64 self-contained   PASS
+ZIP                      PASS
+Artifact upload          PASS
+```
+
+테스트 프로젝트 결과:
+
+```text
+AFMReforge.Core.Tests             48 passed / 0 failed
+AFMReforge.Adapter.AFM.Tests       7 passed / 0 failed
+AFMReforge.Infrastructure.Tests  28 passed / 0 failed
+Total                             83 passed / 0 failed
+```
+
+실제 ZIP artifact:
+
+```text
+Artifact: AFM-Reforge-PC-Cafe-win-x64
+Artifact size: 51,550,949 bytes
+Artifact SHA256: 72287ac2ca172e29cd3e67a6e5926b06ceaae97e0ece81acf6915b06481b5b43
+```
+
+압축 내부에서 다음을 확인했다.
+
+- `AFMReforge.App.exe`
+- `AFMReforge.App.dll`
+- `AFMReforge.App.deps.json`
+- `AFMReforge.App.runtimeconfig.json`
+- `AFMDataClient.Core.dll`
+- `AFMReforge.Adapter.AFM.dll`
+- `AFMReforge.Core.dll`
+- `AFMReforge.Infrastructure.dll`
+- `e_sqlite3.dll`
+- .NET/ASP.NET Core runtime 파일
+- `README-PC-CAFE.md`
+
+PE 검사 결과 `AFMReforge.App.exe`는 Windows x64(PE32+) 실행 파일이다.
+
+개발용 `.git`, `obj`, `Debug`, `node_modules` 항목은 publish ZIP에서 확인되지 않았다.
+
+## 10. Publish 설정
+
+현재 publish 명령은 다음 조건으로 실행된다.
+
+```text
+Target Framework: net10.0
+RID: win-x64
+Configuration: Release
+Self-contained: true
+Single-file: false
+Trimmed: false
+```
+
+Single-file과 Trimmed는 현재 publish 설정에서 활성화하지 않았다. 실제 산출물도 개별 DLL 및 runtime 파일을 포함하는 일반 self-contained 디렉터리 배포 형태다.
+
+## 11. 개발환경 요구사항과 PC방 요구사항 구분
+
+### 빌드/개발에만 필요한 것
+
+- .NET 10 SDK: 개발/CI 빌드용
+- Git: 소스 checkout용
+- Node.js: 현재 PC방 실행에 필요하지 않음
+- Visual Studio: 현재 PC방 실행에 필요하지 않음
+- Python: 현재 PC방 실행에 필요하지 않음
+
+### PC방 실행 시 별도 확인할 것
+
+- Windows x64 환경
+- AFMReforge.App.exe 실행 가능 여부
+- 로컬 브라우저에서 localhost 접속 가능 여부
+- Npcap / packet capture 환경
+- Npcap 설치 권한 및 PC방 정책
+- Albion Online 실행 환경
+
+## 12. 범위 제한
+
+현재 단계에서는 다음 기능을 추가하거나 확정하지 않는다.
 
 - Snapshot
 - Price History
 - Trend
 - Market State
 - Market Price 추론
-- 장기 분석 기능
+- Best Price
+- Buy/Sell Judgment
+- Arbitrage
+- ROI
+- Recommendation
+
+또한 `Offers = Sell`, `Requests = Buy`라는 시장 의미를 임의로 확정하지 않는다.
 
 실제 runtime에서 관측되는 response와 record 구조를 먼저 확인한 뒤 다음 개발 단계를 결정한다.
 
-## 10. 문제 발생 시 원칙
+## 13. 문제 발생 시 원칙
 
 Fake/Demo 데이터를 이용해 Runtime Gate를 통과한 것으로 처리하지 않는다.
 
