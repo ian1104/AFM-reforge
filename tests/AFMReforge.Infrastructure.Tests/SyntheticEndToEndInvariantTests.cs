@@ -242,7 +242,7 @@ public sealed class SyntheticEndToEndInvariantTests
             EnchantmentLevel = 0,
             UnitPriceSilver = 1234L,
             Amount = 2,
-            AuctionType = "MOCK_AUCTION",
+            AuctionType = "unknown",
             Expires = "2030-01-01T00:00:00Z",
             DistanceFee = 0,
             Location = "MOCK_CAERLEON"
