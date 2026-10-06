@@ -24,10 +24,10 @@ public sealed class SqliteMarketObservationStoreTests
         Assert.Equal("0", record.EnchantmentLevel);
         Assert.Equal("1234", record.UnitPriceSilver);
         Assert.Equal("2", record.Amount);
-        Assert.Equal(JsonString("MOCK_AUCTION_TYPE"), record.AuctionType);
+        Assert.Equal(JsonString("Unknown"), record.AuctionType);
         Assert.Equal(JsonString("2030-01-01T00:00:00Z"), record.Expires);
         Assert.Equal("0", record.DistanceFee);
-        Assert.Equal(JsonString("MOCK_LOCATION"), record.ResolvedLocation);
+        Assert.Null(record.ResolvedLocation);
         Assert.Equal(capturedAt.ToString("O"), record.CapturedAt);
     }
 
@@ -86,9 +86,9 @@ public sealed class SqliteMarketObservationStoreTests
             },
             kind, null, capturedAt, [CreateOrder(id)]);
 
-    private static MarketOrderInput CreateOrder(int id)
-        => new(id, "T4_MOCK", "MOCK_GROUP", 1001, 1, 0, 1234L, 2,
-            "MOCK_AUCTION_TYPE", "2030-01-01T00:00:00Z", 0, "MOCK_LOCATION");
+    private static MarketRecord CreateOrder(int id)
+        => new((ulong)id, "T4_MOCK", "MOCK_GROUP", "1001", 1, 0, 1234, 2,
+            MarketOrderType.Unknown, "2030-01-01T00:00:00Z", 0);
 
     private static string JsonString(string value) =>
         System.Text.Json.JsonSerializer.Serialize(value);
