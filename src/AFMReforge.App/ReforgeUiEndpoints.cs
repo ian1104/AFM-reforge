@@ -104,10 +104,10 @@ public static class ReforgeUiEndpoints
 
         app.MapGet("/api/groups", (int? limit, int? offset) =>
         {
-            var storedRows = store.ReadAll();
-            var records = new MarketRecord[storedRows.Count];
-            for (var i = 0; i < storedRows.Count; i++)
-                records[i] = ToDomainRecord(storedRows[i]);
+            var rows = store.Query(new MarketRecordQuery(Limit: 5000));
+            var records = new MarketRecord[rows.Count];
+            for (var i = 0; i < rows.Count; i++)
+                records[i] = ToDomainRecord(rows[i]);
 
             var orderedGroups = MarketRecordGrouping.GroupByKey(records)
                 .OrderByDescending(x => x.Value.Count)
