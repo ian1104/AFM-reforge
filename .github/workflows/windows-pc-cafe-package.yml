@@ -1,0 +1,68 @@
+name: Windows PC Cafe Package
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository with submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore AFMReforge.sln
+
+      - name: Build
+        run: dotnet build AFMReforge.sln -c Release --no-restore
+
+      - name: Test
+        run: dotnet test AFMReforge.sln -c Release --no-build --no-restore
+
+      - name: Publish Windows x64 self-contained
+        run: >-
+          dotnet publish src/AFMReforge.App/AFMReforge.App.csproj
+          -c Release
+          -r win-x64
+          --self-contained true
+          --no-restore
+          -o artifacts/publish/AFM-Reforge-PC-Cafe
+
+      - name: Add deployment README
+        shell: pwsh
+        run: Copy-Item README-PC-CAFE.md artifacts/publish/AFM-Reforge-PC-Cafe/README-PC-CAFE.md -Force
+
+      - name: Create ZIP package
+        shell: pwsh
+        run: |
+          Compress-Archive -Path artifacts/publish/AFM-Reforge-PC-Cafe -DestinationPath artifacts/AFM-Reforge-PC-Cafe-win-x64.zip -Force
+
+      - name: Upload PC cafe ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: AFM-Reforge-PC-Cafe-win-x64
+          path: artifacts/AFM-Reforge-PC-Cafe-win-x64.zip
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload unpacked publish directory
+        uses: actions/upload-artifact@v4
+        with:
+          name: AFM-Reforge-PC-Cafe-publish-win-x64
+          path: artifacts/publish/AFM-Reforge-PC-Cafe
+          if-no-files-found: error
+          retention-days: 14
