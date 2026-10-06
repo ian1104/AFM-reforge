@@ -19,7 +19,7 @@ public sealed class SqliteMarketObservationStoreTests
         Assert.Equal("AuctionGetOffersResponse", record.ResponseType);
         Assert.Equal("42", record.OrderId);
         Assert.Equal(JsonString("T4_MOCK"), record.ItemTypeId);
-        Assert.Equal("1001", record.LocationId);
+        Assert.Equal(JsonString("1001"), record.LocationId);
         Assert.Equal("1", record.QualityLevel);
         Assert.Equal("0", record.EnchantmentLevel);
         Assert.Equal("1234", record.UnitPriceSilver);
