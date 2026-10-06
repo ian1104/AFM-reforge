@@ -258,6 +258,7 @@ public sealed class SyntheticEndToEndInvariantTests
 
         public void Dispose()
         {
+            SqliteConnection.ClearAllPools();
             if (File.Exists(Path))
                 File.Delete(Path);
         }
