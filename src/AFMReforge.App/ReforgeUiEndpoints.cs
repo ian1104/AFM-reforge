@@ -110,10 +110,8 @@ public static class ReforgeUiEndpoints
                 .Skip(Math.Max(offset ?? 0, 0))
                 .Take(Math.Clamp(limit ?? 100, 1, 500))
                 .ToArray();
-            var skip = Math.Max(offset ?? 0, 0);
-            var groups = grouped.Select((x, index) => new
+            var groups = grouped.Select(x => new
             {
-                index = index + 1 + skip,
                 key = x.Key,
                 recordCount = x.Value.Count,
                 metrics = new ObservedOrderMetricsCalculator().Calculate(x.Value)
