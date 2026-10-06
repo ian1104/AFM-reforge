@@ -105,17 +105,19 @@ public static class ReforgeUiEndpoints
         app.MapGet("/api/groups", (int? limit, int? offset) =>
         {
             var records = store.ReadAll().Select(ToDomainRecord).ToArray();
-            var groups = MarketRecordGrouping.GroupByKey(records)
+            var grouped = MarketRecordGrouping.GroupByKey(records)
                 .OrderByDescending(x => x.Value.Count)
                 .Skip(Math.Max(offset ?? 0, 0))
                 .Take(Math.Clamp(limit ?? 100, 1, 500))
-                .Select((KeyValuePair<MarketGroupingKey, IReadOnlyList<MarketRecord>> x, int index) => new
-                {
-                    index = index + 1 + Math.Max(offset ?? 0, 0),
-                    key = x.Key,
-                    recordCount = x.Value.Count,
-                    metrics = new ObservedOrderMetricsCalculator().Calculate(x.Value)
-                });
+                .ToArray();
+            var skip = Math.Max(offset ?? 0, 0);
+            var groups = grouped.Select((x, index) => new
+            {
+                index = index + 1 + skip,
+                key = x.Key,
+                recordCount = x.Value.Count,
+                metrics = new ObservedOrderMetricsCalculator().Calculate(x.Value)
+            });
 
             return Results.Ok(groups);
         });
