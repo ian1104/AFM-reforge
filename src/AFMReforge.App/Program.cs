@@ -3,8 +3,18 @@ using AFMReforge.Infrastructure;
 using AFMReforge.App;
 
 var demoMode = string.Equals(Environment.GetEnvironmentVariable("AFM_REFORGE_DEMO"), "1", StringComparison.OrdinalIgnoreCase);
-var databasePath = Environment.GetEnvironmentVariable("AFM_REFORGE_DB")
-    ?? Path.Combine(AppContext.BaseDirectory, demoMode ? "afm-reforge-demo.db" : "afm-reforge.db");
+var configuredDatabasePath = Environment.GetEnvironmentVariable("AFM_REFORGE_DB");
+
+var databasePath = string.IsNullOrWhiteSpace(configuredDatabasePath)
+    ? Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "AFMReforge",
+        demoMode ? "afm-reforge-demo.db" : "afm-reforge.db")
+    : Path.GetFullPath(configuredDatabasePath);
+
+var databaseDirectory = Path.GetDirectoryName(databasePath);
+if (!string.IsNullOrWhiteSpace(databaseDirectory))
+    Directory.CreateDirectory(databaseDirectory);
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddSingleton<RuntimeDiagnosticsState>();
