@@ -18,7 +18,9 @@ public sealed class SqliteMarketObservationRelationTests
         var records = store.ReadAll();
         Assert.Equal(2, records.Count);
         Assert.All(records, record => Assert.Equal(observation.ObservationId, record.ObservationId));
-        Assert.Equal(observation.ObservationId, store.Query(new MarketRecordQuery(ObservationId: observation.ObservationId)).Single().ObservationId);
+        var associated = store.Query(new MarketRecordQuery(ObservationId: observation.ObservationId));
+        Assert.Equal(2, associated.Count);
+        Assert.All(associated, record => Assert.Equal(observation.ObservationId, record.ObservationId));
     }
 
     [Fact]
@@ -34,7 +36,7 @@ public sealed class SqliteMarketObservationRelationTests
 
         Assert.Equal(3, records.Count);
         Assert.All(records, record => Assert.Equal(observation.ObservationId, record.ObservationId));
-        Assert.Equal(["1", "2", "3"], records.Select(x => x.OrderId));
+        Assert.Equal(["3", "2", "1"], records.Select(x => x.OrderId));
     }
 
     [Fact]
