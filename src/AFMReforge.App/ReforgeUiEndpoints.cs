@@ -109,7 +109,7 @@ public static class ReforgeUiEndpoints
                 .OrderByDescending(x => x.Value.Count)
                 .Skip(Math.Max(offset ?? 0, 0))
                 .Take(Math.Clamp(limit ?? 100, 1, 500))
-                .Select((x, index) => new
+                .Select((KeyValuePair<MarketGroupingKey, IReadOnlyList<MarketRecord>> x, int index) => new
                 {
                     index = index + 1 + Math.Max(offset ?? 0, 0),
                     key = x.Key,
