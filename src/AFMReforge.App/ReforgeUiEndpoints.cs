@@ -104,7 +104,11 @@ public static class ReforgeUiEndpoints
 
         app.MapGet("/api/groups", (int? limit, int? offset) =>
         {
-            var records = store.ReadAll().Select(row => ToDomainRecord(row)).ToArray();
+            var storedRows = store.ReadAll();
+            var records = new MarketRecord[storedRows.Count];
+            for (var i = 0; i < storedRows.Count; i++)
+                records[i] = ToDomainRecord(storedRows[i]);
+
             var orderedGroups = MarketRecordGrouping.GroupByKey(records)
                 .OrderByDescending(x => x.Value.Count)
                 .Skip(Math.Max(offset ?? 0, 0))
@@ -163,10 +167,16 @@ public static class ReforgeUiEndpoints
                 EnchantmentLevel: enchantmentLevel,
                 Limit: 5000));
 
-            var records = rows
-                .Where(x => string.Equals(x.AuctionType, auctionType.ToString(), StringComparison.Ordinal))
-                .Select(row => ToDomainRecord(row))
-                .ToArray();
+            var records = new MarketRecord[rows.Count];
+            var recordIndex = 0;
+            foreach (var row in rows)
+            {
+                if (string.Equals(row.AuctionType, auctionType.ToString(), StringComparison.Ordinal))
+                    records[recordIndex++] = ToDomainRecord(row);
+            }
+
+            if (recordIndex != records.Length)
+                Array.Resize(ref records, recordIndex);
 
             var metrics = new ObservedOrderMetricsCalculator().Calculate(records);
             return Results.Ok(new
@@ -188,7 +198,10 @@ public static class ReforgeUiEndpoints
 
     private static object TryCalculateScope(IReadOnlyList<MarketRecordView> rows)
     {
-        var records = rows.Select(row => ToDomainRecord(row)).ToArray();
+        var records = new MarketRecord[rows.Count];
+        for (var i = 0; i < rows.Count; i++)
+            records[i] = ToDomainRecord(rows[i]);
+
         var scope = new MarketObservationScopeCalculator().Calculate(records);
 
         return new
