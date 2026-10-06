@@ -111,17 +111,21 @@ public static class ReforgeUiEndpoints
                 .Take(Math.Clamp(limit ?? 100, 1, 500))
                 .ToArray();
 
-            var groups = orderedGroups
-                .Select((x, index) => new
+            var groupResults = new List<object>(orderedGroups.Length);
+            var startIndex = Math.Max(offset ?? 0, 0);
+            for (var i = 0; i < orderedGroups.Length; i++)
+            {
+                var group = orderedGroups[i];
+                groupResults.Add(new
                 {
-                    index = index + 1 + Math.Max(offset ?? 0, 0),
-                    key = x.Key,
-                    recordCount = x.Value.Count,
-                    metrics = new ObservedOrderMetricsCalculator().Calculate(x.Value)
-                })
-                .ToArray();
+                    index = startIndex + i + 1,
+                    key = group.Key,
+                    recordCount = group.Value.Count,
+                    metrics = new ObservedOrderMetricsCalculator().Calculate(group.Value)
+                });
+            }
 
-            return Results.Ok(groups);
+            return Results.Ok(groupResults);
         });
 
         app.MapGet("/api/groups/records", (
