@@ -110,12 +110,16 @@ public static class ReforgeUiEndpoints
                 .Skip(Math.Max(offset ?? 0, 0))
                 .Take(Math.Clamp(limit ?? 100, 1, 500))
                 .ToArray();
-            var groups = grouped.Select(x => new
+            var groups = new List<object>(grouped.Length);
+            foreach (var group in grouped)
             {
-                key = x.Key,
-                recordCount = x.Value.Count,
-                metrics = new ObservedOrderMetricsCalculator().Calculate(x.Value)
-            });
+                groups.Add(new
+                {
+                    key = group.Key,
+                    recordCount = group.Value.Count,
+                    metrics = new ObservedOrderMetricsCalculator().Calculate(group.Value)
+                });
+            }
 
             return Results.Ok(groups);
         });
