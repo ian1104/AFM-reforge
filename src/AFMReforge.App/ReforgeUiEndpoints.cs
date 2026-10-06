@@ -104,7 +104,7 @@ public static class ReforgeUiEndpoints
 
         app.MapGet("/api/groups", (int? limit, int? offset) =>
         {
-            var records = store.ReadAll().Select(ToDomainRecord).ToArray();
+            var records = store.ReadAll().Select(row => ToDomainRecord(row)).ToArray();
             var orderedGroups = MarketRecordGrouping.GroupByKey(records)
                 .OrderByDescending(x => x.Value.Count)
                 .Skip(Math.Max(offset ?? 0, 0))
@@ -165,7 +165,7 @@ public static class ReforgeUiEndpoints
 
             var records = rows
                 .Where(x => string.Equals(x.AuctionType, auctionType.ToString(), StringComparison.Ordinal))
-                .Select(ToDomainRecord)
+                .Select(row => ToDomainRecord(row))
                 .ToArray();
 
             var metrics = new ObservedOrderMetricsCalculator().Calculate(records);
@@ -188,7 +188,7 @@ public static class ReforgeUiEndpoints
 
     private static object TryCalculateScope(IReadOnlyList<MarketRecordView> rows)
     {
-        var records = rows.Select(ToDomainRecord).ToArray();
+        var records = rows.Select(row => ToDomainRecord(row)).ToArray();
         var scope = new MarketObservationScopeCalculator().Calculate(records);
 
         return new
