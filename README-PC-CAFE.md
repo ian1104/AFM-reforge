@@ -229,15 +229,7 @@ Errors:
 
 ## 9. CI 배포 검증 결과
 
-최종 검증 run:
-
-```text
-Workflow: Windows PC Cafe Package
-Run: #30
-HEAD: b4e554e5dcf2367e6aa1fda3df8d417206bcd0c8
-```
-
-단계별 결과:
+최종 배포 workflow가 다음 전체 pipeline을 통과해야 배포 성공으로 취급한다.
 
 ```text
 Checkout                 PASS
@@ -250,7 +242,7 @@ ZIP                      PASS
 Artifact upload          PASS
 ```
 
-테스트 프로젝트 결과:
+검증된 테스트 프로젝트 결과:
 
 ```text
 AFMReforge.Core.Tests             48 passed / 0 failed
@@ -259,15 +251,7 @@ AFMReforge.Infrastructure.Tests  28 passed / 0 failed
 Total                             83 passed / 0 failed
 ```
 
-실제 ZIP artifact:
-
-```text
-Artifact: AFM-Reforge-PC-Cafe-win-x64
-Artifact size: 51,550,949 bytes
-Artifact SHA256: 72287ac2ca172e29cd3e67a6e5926b06ceaae97e0ece81acf6915b06481b5b43
-```
-
-압축 내부에서 다음을 확인했다.
+최종 workflow artifact에는 다음이 포함된다.
 
 - `AFMReforge.App.exe`
 - `AFMReforge.App.dll`
@@ -284,6 +268,8 @@ Artifact SHA256: 72287ac2ca172e29cd3e67a6e5926b06ceaae97e0ece81acf6915b06481b5b4
 PE 검사 결과 `AFMReforge.App.exe`는 Windows x64(PE32+) 실행 파일이다.
 
 개발용 `.git`, `obj`, `Debug`, `node_modules` 항목은 publish ZIP에서 확인되지 않았다.
+
+실제 artifact의 정확한 크기와 SHA256은 해당 GitHub Actions run의 artifact metadata를 기준으로 확인한다. README 자체에 이전 run의 hash를 고정하지 않는다.
 
 ## 10. Publish 설정
 
