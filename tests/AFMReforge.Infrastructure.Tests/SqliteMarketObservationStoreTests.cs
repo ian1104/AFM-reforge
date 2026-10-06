@@ -104,6 +104,7 @@ public sealed class SqliteMarketObservationStoreTests
 
         public void Dispose()
         {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
             if (File.Exists(Path))
                 File.Delete(Path);
         }
