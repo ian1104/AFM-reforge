@@ -81,6 +81,12 @@ public sealed class MarketObservationTests
     private static MarketObservationInput CreateInput(
         MarketResponseKind kind,
         int orderId,
+        string itemTypeId)
+        => CreateInput(kind, [orderId], DateTimeOffset.Parse("2026-10-02T12:00:00Z"), itemTypeId);
+
+    private static MarketObservationInput CreateInput(
+        MarketResponseKind kind,
+        int orderId,
         DateTimeOffset capturedAt)
         => CreateInput(kind, [orderId], capturedAt, "MOCK_T6_SWORD");
 
