@@ -1,0 +1,50 @@
+name: publish-windows
+
+on:
+  push:
+    branches: [ main, 'feat/**' ]
+  workflow_dispatch:
+
+jobs:
+  publish-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore AFMReforge.sln
+
+      - name: Build
+        run: dotnet build AFMReforge.sln --no-restore --configuration Release
+
+      - name: Test
+        run: dotnet test AFMReforge.sln --no-build --configuration Release --logger "trx;LogFileName=test-results.trx"
+
+      - name: Publish Windows x64 self-contained
+        shell: pwsh
+        run: |
+          ./packaging/windows/publish-windows.ps1 -Configuration Release -Version "ci-${{ github.run_number }}"
+
+      - name: Upload Windows package
+        uses: actions/upload-artifact@v4
+        with:
+          name: AFM-Reforge-win-x64-ci-${{ github.run_number }}
+          path: artifacts/windows/AFM-Reforge-win-x64-vci-${{ github.run_number }}.zip
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Verify self-contained output
+        shell: pwsh
+        run: |
+          $manifest = Get-Content artifacts/windows/AFM-Reforge-Windows/PACKAGE-MANIFEST.txt -Raw
+          if ($manifest -notmatch 'Self-contained: true') { throw 'Self-contained manifest check failed.' }
+          if (-not (Test-Path artifacts/windows/AFM-Reforge-Windows/AFMReforge.exe)) { throw 'AFMReforge.exe is missing.' }
+          Write-Host $manifest
