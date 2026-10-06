@@ -138,20 +138,19 @@ public sealed class SqliteMarketObservationRelationTests
             DateTimeOffset.Parse("2026-10-02T12:00:00Z"),
             orderIds.Select(CreateOrder).ToArray());
 
-    private static MarketOrderInput CreateOrder(int id)
+    private static MarketRecord CreateOrder(int id)
         => new(
-            id,
+            (ulong)id,
             "MOCK_T6_SWORD",
             "MOCK_GROUP",
-            1001,
+            "1001",
             1,
             0,
-            1234L,
+            1234,
             2,
-            "MOCK_AUCTION",
+            MarketOrderType.Unknown,
             "2030-01-01T00:00:00Z",
-            0,
-            "MOCK_CAERLEON");
+            0);
 
     private static void CreateLegacyDatabase(string path)
     {
