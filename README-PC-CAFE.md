@@ -67,14 +67,28 @@ http://localhost:5180
 
 ### Step 4 — Diagnostics 확인
 
-`Diagnostics` 화면에서 실제 runtime 상태를 확인한다.
+기존 `Diagnostics` 화면에서 현재 runtime diagnostics를 확인한다.
+
+추가된 Runtime Gate 전용 화면은 다음 주소에서 확인할 수 있다.
+
+```text
+http://localhost:5180/runtime-gate.html
+```
 
 초기 상태가 `UNKNOWN`인 것은 정상이다. 실제 runtime 이벤트가 발생하기 전에는 `CONNECTED`, `READY`, `CAPTURED` 등의 상태를 임의로 표시하지 않는다.
 
 확인할 항목:
 
-- AFM Core
-- Receiver
+- G0 App Process
+- G1 HTTP / UI
+- G2 AFM Core
+- G3 Receiver
+- G4 Packet Capture
+- G5 Market Response
+- G6 Adapter
+- G7 Observation
+- G8 SQLite Persistence
+- G9 UI Reflection
 - Last ResponseKind
 - Last ResponseTime
 - Last ResponseRecordCount
@@ -84,7 +98,49 @@ http://localhost:5180
 - Last PersistenceCount
 - Last Error
 
-## 4. 정상 실행의 판단 기준
+## 4. Runtime Gate v2
+
+Runtime Integration은 다음 순서로 분리하여 판단한다.
+
+```text
+G0 App Process
+ ↓
+G1 HTTP / UI
+ ↓
+G2 AFM Core
+ ↓
+G3 Receiver
+ ↓
+G4 Packet Capture
+ ↓
+G5 Market Response
+ ↓
+G6 Adapter
+ ↓
+G7 Observation
+ ↓
+G8 SQLite Persistence
+ ↓
+G9 UI Reflection
+```
+
+각 gate는 실제 runtime event가 발생했을 때만 `PASS`가 된다.
+
+초기 상태는 `UNKNOWN`이다.
+
+실패가 발생하면 이후 gate가 `UNKNOWN`인 것은 정상이다. Diagnostics는 가장 먼저 `FAIL`이 된 gate를 `First failure boundary`로 표시한다.
+
+특히 G4 Packet Capture는 다음만으로 PASS로 판단하지 않는다.
+
+- Npcap DLL 존재
+- Npcap registry key 존재
+- Receiver object 존재
+- Application 실행
+- Albion 프로세스 존재
+
+현재 Reforge에는 실제 capture subsystem의 성공 callback을 임의로 생성하지 않는다. 따라서 해당 runtime event가 확보되기 전에는 G4를 `UNKNOWN`으로 유지한다.
+
+## 5. 정상 실행의 판단 기준
 
 ### A. UI 실행만 확인
 
@@ -122,7 +178,7 @@ Diagnostics / UI
 
 특히 실제 `Market Response`가 들어와야 한다.
 
-## 5. 권한 및 외부 의존성
+## 6. 권한 및 외부 의존성
 
 ### .NET Runtime
 
@@ -154,7 +210,7 @@ Packet capture 권한 확보
 
 현재 PC방 ZIP에는 Npcap 설치 프로그램을 포함하지 않는다.
 
-## 6. PC방 테스트 순서
+## 7. PC방 테스트 순서
 
 1. ZIP 압축 해제
 2. Windows 보안/PC방 정책상 실행 가능 여부 확인
@@ -162,54 +218,71 @@ Packet capture 권한 확보
 4. 필요한 경우 관리자 권한으로 Npcap 설치
 5. `AFMReforge.App.exe` 실행
 6. `http://localhost:5180` 접속
-7. Diagnostics 화면 진입
+7. `Diagnostics` 또는 `/runtime-gate.html` 진입
 8. Albion 실행/접속
 9. 실제 Market 관련 행동을 수행
-10. `Last ResponseKind` 및 record count 확인
-11. Adapter record count 확인
-12. Observation ID / record count 확인
-13. Persistence count 확인
-14. Error가 발생하면 내용을 보존
+10. G4 Packet Capture 변화 확인
+11. G5 Market Response의 ResponseKind 및 record count 확인
+12. G6 Adapter record count 확인
+13. G7 Observation ID / record count 확인
+14. G8 Persistence count 확인
+15. 저장된 Observation을 UI에서 열어 G9 UI Reflection 확인
+16. Error가 발생하면 내용을 보존
 
-## 7. Runtime 결과 기록 양식
+## 8. Runtime 기록 양식
 
 실제 PC방에서 다음 값을 기록한다.
 
 ```text
-AFM Core:
-Receiver:
+Date:
+Windows:
+Application version / commit:
+Artifact:
+Npcap:
+Administrator:
+Albion launched:
+
+G0:
+G1:
+G2:
+G3:
+G4:
+G5:
+G6:
+G7:
+G8:
+G9:
 
 First Response:
 Response Kind:
-Record Count:
-
+Response Record Count:
 Adapter Record Count:
-
-Observation ID:
 Observation Record Count:
-
 Persistence Count:
+
+ObservationId:
+CapturedAt:
 
 ItemTypeId:
 LocationId:
 Quality:
 Enchantment:
-CapturedAt:
 
 Second Query:
-
 Different Item:
-
 Different City:
-
 AFM coexistence:
 
-Errors:
+First Failure Boundary:
+Last Error:
+
+Result:
+PASS / FAIL / PARTIAL / UNVERIFIED
 ```
 
-예를 들어 Response Records / Adapter Records / Observation Records / Persistence Count가 모두 같은 값으로 관측되더라도, 그것만으로 시장 의미가 정확하다고 결론 내리지 않는다.
+Response Records / Adapter Records / Observation Records / Persistence Count가 모두 같은 값으로 관측되더라도, 그것만으로 시장 의미가 정확하다고 결론 내리지 않는다.
 
-## 8. 현재 검증 상태
+## 9. 현재 검증 상태
 
 | 항목 | 상태 |
 |---|---|
@@ -227,7 +300,7 @@ Errors:
 | 실제 Market Response | UNVERIFIED |
 | Runtime Integration Gate | NOT PASSED |
 
-## 9. CI 배포 검증 결과
+## 10. CI 배포 검증 결과
 
 최종 배포 workflow가 다음 전체 pipeline을 통과해야 배포 성공으로 취급한다.
 
@@ -247,7 +320,7 @@ Artifact upload          PASS
 ```text
 AFMReforge.Core.Tests             48 passed / 0 failed
 AFMReforge.Adapter.AFM.Tests       7 passed / 0 failed
-AFMReforge.Infrastructure.Tests  28 passed / 0 failed
+AFMReforge.Infrastructure.Tests 28 passed / 0 failed
 Total                             83 passed / 0 failed
 ```
 
@@ -271,7 +344,7 @@ PE 검사 결과 `AFMReforge.App.exe`는 Windows x64(PE32+) 실행 파일이다.
 
 실제 artifact의 정확한 크기와 SHA256은 해당 GitHub Actions run의 artifact metadata를 기준으로 확인한다. README 자체에 이전 run의 hash를 고정하지 않는다.
 
-## 10. Publish 설정
+## 11. Publish 설정
 
 현재 publish 명령은 다음 조건으로 실행된다.
 
@@ -286,7 +359,7 @@ Trimmed: false
 
 Single-file과 Trimmed는 현재 publish 설정에서 활성화하지 않았다. 실제 산출물도 개별 DLL 및 runtime 파일을 포함하는 일반 self-contained 디렉터리 배포 형태다.
 
-## 11. 개발환경 요구사항과 PC방 요구사항 구분
+## 12. 개발환경 요구사항과 PC방 요구사항 구분
 
 ### 빌드/개발에만 필요한 것
 
@@ -305,7 +378,7 @@ Single-file과 Trimmed는 현재 publish 설정에서 활성화하지 않았다.
 - Npcap 설치 권한 및 PC방 정책
 - Albion Online 실행 환경
 
-## 12. 범위 제한
+## 13. 범위 제한
 
 현재 단계에서는 다음 기능을 추가하거나 확정하지 않는다.
 
@@ -324,8 +397,29 @@ Single-file과 Trimmed는 현재 publish 설정에서 활성화하지 않았다.
 
 실제 runtime에서 관측되는 response와 record 구조를 먼저 확인한 뒤 다음 개발 단계를 결정한다.
 
-## 13. 문제 발생 시 원칙
+## 14. Runtime Diagnostics 구현 경계
+
+Runtime Gate diagnostics는 실제 event를 공급하는 기존 경계를 그대로 사용한다.
+
+- G0: application diagnostics initialization
+- G1: ASP.NET `ApplicationStarted`
+- G2: `MarkAfmCoreInitialized()` 호출 시점
+- G3: 실제 receiver `Build()` 성공 시점
+- G4: 실제 packet capture 성공 event가 확보될 때까지 UNKNOWN
+- G5: 실제 market response mapping 시점
+- G6: AFM Adapter mapping 완료 시점
+- G7: `MarketObservation` 생성 시점
+- G8: SQLite transaction commit 이후
+- G9: persisted Observation을 조회한 UI가 명시적으로 reflection verification을 요청한 시점
+
+G4에 대해 Npcap 설치나 Albion 프로세스 존재만으로 성공을 생성하지 않는다.
+
+Synthetic test는 Runtime Gate를 PASS시키는 경로로 연결하지 않는다.
+
+## 15. 문제 발생 시 원칙
 
 Fake/Demo 데이터를 이용해 Runtime Gate를 통과한 것으로 처리하지 않는다.
 
 실제 packet capture → response → adapter → observation → persistence 흐름이 확인되지 않았다면 상태는 `UNVERIFIED` 또는 `NOT PASSED`로 유지한다.
+
+현재 상태는 **Runtime Integration Gate = NOT PASSED / READY FOR TEST**이다.
