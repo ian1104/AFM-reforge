@@ -10,6 +10,15 @@ public static class ReforgeUiEndpoints
     {
         app.MapGet("/api/diagnostics", (RuntimeDiagnosticsState diagnostics) => Results.Ok(diagnostics.Snapshot()));
 
+        app.MapPost("/api/diagnostics/ui-reflection", (Guid? observationId, RuntimeDiagnosticsState diagnostics) =>
+        {
+            if (observationId.HasValue && !store.ReadObservations().Any(x => x.ObservationId == observationId.Value))
+                return Results.NotFound(new { error = "Persisted observation was not found." });
+
+            diagnostics.MarkUiReflection();
+            return Results.Ok(diagnostics.Snapshot());
+        });
+
         app.MapGet("/api/overview", () =>
         {
             var observations = store.ReadObservations();
