@@ -12,6 +12,9 @@ builder.WebHost.UseUrls(Environment.GetEnvironmentVariable("ASPNETCORE_URLS") ??
 
 var app = builder.Build();
 var diagnostics = app.Services.GetRequiredService<RuntimeDiagnosticsState>();
+diagnostics.MarkAppProcessStarted();
+app.Lifetime.ApplicationStarted.Register(diagnostics.MarkHttpUiStarted);
+
 var store = new SqliteMarketObservationStore(databasePath, diagnostics);
 if (demoMode)
     DemoDataSeeder.SeedIfEmpty(store);
@@ -24,7 +27,7 @@ app.MapGet("/api/status", () => Results.Ok(new
 {
     application = "AFM Reforge",
     mode = "PRE-RUNTIME",
-    runtimeIntegration = "PENDING VALIDATION",
+    runtimeIntegration = diagnostics.Snapshot().RuntimeSummary,
     databasePath,
     preRuntimeBase = "5b25a81ebb16981380d82d1233d0a138ff9b94bc"
 }));
