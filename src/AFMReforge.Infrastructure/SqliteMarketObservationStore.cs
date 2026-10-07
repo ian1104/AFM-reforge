@@ -32,39 +32,47 @@ public sealed class SqliteMarketObservationStore : IMarketObservationStore, IMar
     {
         ArgumentNullException.ThrowIfNull(observation);
 
-        using var connection = OpenConnection();
-        using var transaction = connection.BeginTransaction();
-
-        using (var observationCommand = connection.CreateCommand())
+        try
         {
-            observationCommand.Transaction = transaction;
-            observationCommand.CommandText = """
-                INSERT INTO market_observations (
-                    ObservationId,
-                    CapturedAt,
-                    ResponseKind
-                )
-                VALUES (
-                    $observationId,
-                    $capturedAt,
-                    $responseKind
-                );
-                """;
-            observationCommand.Parameters.AddWithValue("$observationId", observation.ObservationId.ToString("D"));
-            observationCommand.Parameters.AddWithValue("$capturedAt",
-                observation.CapturedAt?.ToString("O", CultureInfo.InvariantCulture) ?? (object)DBNull.Value);
-            observationCommand.Parameters.AddWithValue("$responseKind", observation.ResponseKind.ToString());
-            observationCommand.ExecuteNonQuery();
-        }
+            using var connection = OpenConnection();
+            using var transaction = connection.BeginTransaction();
 
-        foreach (var order in observation.Records)
+            using (var observationCommand = connection.CreateCommand())
+            {
+                observationCommand.Transaction = transaction;
+                observationCommand.CommandText = """
+                    INSERT INTO market_observations (
+                        ObservationId,
+                        CapturedAt,
+                        ResponseKind
+                    )
+                    VALUES (
+                        $observationId,
+                        $capturedAt,
+                        $responseKind
+                    );
+                    """;
+                observationCommand.Parameters.AddWithValue("$observationId", observation.ObservationId.ToString("D"));
+                observationCommand.Parameters.AddWithValue("$capturedAt",
+                    observation.CapturedAt?.ToString("O", CultureInfo.InvariantCulture) ?? (object)DBNull.Value);
+                observationCommand.Parameters.AddWithValue("$responseKind", observation.ResponseKind.ToString());
+                observationCommand.ExecuteNonQuery();
+            }
+
+            foreach (var order in observation.Records)
+            {
+                InsertOrder(connection, transaction, observation.ObservationId, observation.ResponseType,
+                    observation.ResponseKind, observation.OperationCode, observation.CapturedAt, order);
+            }
+
+            transaction.Commit();
+            _diagnostics?.MarkPersistence(observation.Records.Count);
+        }
+        catch (Exception exception)
         {
-            InsertOrder(connection, transaction, observation.ObservationId, observation.ResponseType,
-                observation.ResponseKind, observation.OperationCode, observation.CapturedAt, order);
+            _diagnostics?.MarkGateFailure(RuntimeGate.Persistence, exception);
+            throw;
         }
-
-        transaction.Commit();
-        _diagnostics?.MarkPersistence(observation.Records.Count);
     }
 
     public void Persist(MarketObservationInput input)
@@ -261,89 +269,9 @@ public sealed class SqliteMarketObservationStore : IMarketObservationStore, IMar
         {
             records.Add(new MarketRecordView(
                 reader.GetInt64(0),
-                reader.GetString(1),
-                Enum.Parse<MarketResponseKind>(reader.GetString(2)),
+                ReadNullableString(reader, 1),
+                ReadNullableString(reader, 2),
                 ReadNullableString(reader, 3),
-                ReadNullableDateTimeOffset(reader, 4),
-                UnserializeString(reader, 5),
-                UnserializeString(reader, 6),
-                UnserializeString(reader, 7),
-                UnserializeString(reader, 8),
-                UnserializeString(reader, 9),
-                UnserializeString(reader, 10),
-                UnserializeString(reader, 11),
-                UnserializeString(reader, 12),
-                UnserializeString(reader, 13),
-                UnserializeString(reader, 14),
-                UnserializeString(reader, 15),
-                UnserializeString(reader, 16),
-                ReadNullableGuid(reader, 17)));
-        }
-
-        return records;
-    }
-
-    public IReadOnlyList<StoredMarketObservation> ReadObservations()
-    {
-        using var connection = OpenConnection();
-        using var command = connection.CreateCommand();
-        command.CommandText = """
-            SELECT ObservationId, CapturedAt, ResponseKind
-            FROM market_observations
-            ORDER BY COALESCE(CapturedAt, '' ) DESC, ObservationId DESC;
-            """;
-
-        using var reader = command.ExecuteReader();
-        var observations = new List<StoredMarketObservation>();
-        while (reader.Read())
-        {
-            observations.Add(new StoredMarketObservation(
-                Guid.Parse(reader.GetString(0)),
-                ReadNullableDateTimeOffset(reader, 1),
-                Enum.Parse<MarketResponseKind>(reader.GetString(2))));
-        }
-
-        return observations;
-    }
-
-    public IReadOnlyList<StoredMarketObservationRecord> ReadAll()
-    {
-        using var connection = OpenConnection();
-        using var command = connection.CreateCommand();
-        command.CommandText = """
-            SELECT
-                StorageRecordId,
-                ObservationId,
-                ResponseType,
-                ResponseKind,
-                OperationCode,
-                CapturedAt,
-                OrderId,
-                ItemTypeId,
-                ItemGroupTypeId,
-                LocationId,
-                QualityLevel,
-                EnchantmentLevel,
-                UnitPriceSilver,
-                Amount,
-                AuctionType,
-                Expires,
-                DistanceFee,
-                ResolvedLocation
-            FROM market_observation_records
-            ORDER BY StorageRecordId;
-            """;
-
-        using var reader = command.ExecuteReader();
-        var records = new List<StoredMarketObservationRecord>();
-
-        while (reader.Read())
-        {
-            records.Add(new StoredMarketObservationRecord(
-                reader.GetInt64(0),
-                ReadNullableGuid(reader, 1),
-                reader.GetString(2),
-                reader.GetString(3),
                 ReadNullableString(reader, 4),
                 ReadNullableString(reader, 5),
                 ReadNullableString(reader, 6),
@@ -357,18 +285,36 @@ public sealed class SqliteMarketObservationStore : IMarketObservationStore, IMar
                 ReadNullableString(reader, 14),
                 ReadNullableString(reader, 15),
                 ReadNullableString(reader, 16),
-                ReadNullableString(reader, 17)));
+                ReadNullableGuid(reader, 17)));
         }
 
         return records;
     }
 
-    private SqliteConnection OpenConnection()
+    public IReadOnlyList<MarketObservationRecordView> ReadObservations()
     {
-        var connection = new SqliteConnection(_connectionString);
-        connection.Open();
-        return connection;
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT ObservationId, CapturedAt, ResponseKind
+            FROM market_observations
+            ORDER BY CapturedAt DESC, rowid DESC;
+            """;
+
+        using var reader = command.ExecuteReader();
+        var rows = new List<MarketObservationRecordView>();
+        while (reader.Read())
+        {
+            rows.Add(new MarketObservationRecordView(
+                Guid.Parse(reader.GetString(0)),
+                reader.IsDBNull(1) ? null : reader.GetString(1),
+                Enum.TryParse<MarketResponseKind>(reader.GetString(2), out var kind) ? kind : MarketResponseKind.Unknown));
+        }
+
+        return rows;
     }
+
+    public IReadOnlyList<MarketRecordView> ReadAll() => Query(new MarketRecordQuery(Limit: 5000));
 
     private void Initialize()
     {
@@ -388,7 +334,7 @@ public sealed class SqliteMarketObservationStore : IMarketObservationStore, IMar
                 ResponseKind TEXT NOT NULL,
                 OperationCode TEXT NULL,
                 CapturedAt TEXT NULL,
-                OrderId TEXT NULL,
+                OrderId TEXT NOT NULL,
                 ItemTypeId TEXT NULL,
                 ItemGroupTypeId TEXT NULL,
                 LocationId TEXT NULL,
@@ -404,68 +350,65 @@ public sealed class SqliteMarketObservationStore : IMarketObservationStore, IMar
             """;
         command.ExecuteNonQuery();
 
-        EnsureColumnExists(connection, "market_observation_records", "ObservationId", "TEXT NULL");
+        EnsureObservationIdColumn(connection);
     }
 
-    private static void EnsureColumnExists(
-        SqliteConnection connection,
-        string tableName,
-        string columnName,
-        string columnDefinition)
+    private static void EnsureObservationIdColumn(SqliteConnection connection)
     {
-        using var check = connection.CreateCommand();
-        check.CommandText = $"PRAGMA table_info({tableName});";
-        using var reader = check.ExecuteReader();
-
+        using var command = connection.CreateCommand();
+        command.CommandText = "PRAGMA table_info(market_observation_records);";
+        using var reader = command.ExecuteReader();
+        var hasObservationId = false;
         while (reader.Read())
         {
-            if (string.Equals(reader.GetString(1), columnName, StringComparison.OrdinalIgnoreCase))
-                return;
+            if (string.Equals(reader.GetString(1), "ObservationId", StringComparison.OrdinalIgnoreCase))
+            {
+                hasObservationId = true;
+                break;
+            }
         }
 
-        reader.Close();
+        if (hasObservationId)
+            return;
 
         using var alter = connection.CreateCommand();
-        alter.CommandText = $"ALTER TABLE {tableName} ADD COLUMN {columnName} {columnDefinition};";
+        alter.CommandText = "ALTER TABLE market_observation_records ADD COLUMN ObservationId TEXT NULL;";
         alter.ExecuteNonQuery();
     }
 
+    private SqliteConnection OpenConnection()
+    {
+        var connection = new SqliteConnection(_connectionString);
+        connection.Open();
+        return connection;
+    }
+
+    private static string? SerializeValue(object? value)
+        => value switch
+        {
+            null => null,
+            string text => text,
+            DateTimeOffset dto => dto.ToString("O", CultureInfo.InvariantCulture),
+            DateTime dt => dt.ToString("O", CultureInfo.InvariantCulture),
+            _ => Convert.ToString(value, CultureInfo.InvariantCulture)
+        };
+
     private static string? ReadNullableString(SqliteDataReader reader, int ordinal)
-        => reader.IsDBNull(ordinal) ? null : reader.GetString(ordinal);
+        => reader.IsDBNull(ordinal) ? null : reader.GetValue(ordinal)?.ToString();
 
     private static Guid? ReadNullableGuid(SqliteDataReader reader, int ordinal)
-    {
-        var value = ReadNullableString(reader, ordinal);
-        return value is null ? null : Guid.Parse(value);
-    }
-
-    private static DateTimeOffset? ReadNullableDateTimeOffset(SqliteDataReader reader, int ordinal)
-    {
-        var value = ReadNullableString(reader, ordinal);
-        return value is null ? null : DateTimeOffset.Parse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
-    }
-
-    private static string? UnserializeString(SqliteDataReader reader, int ordinal)
-    {
-        var value = ReadNullableString(reader, ordinal);
-        if (value is null || value == "null")
-            return null;
-
-        using var document = JsonDocument.Parse(value);
-        return document.RootElement.ValueKind == JsonValueKind.String
-            ? document.RootElement.GetString()
-            : value;
-    }
-
-    internal static string SerializeValue(object? value)
-        => value is null ? "null" : JsonSerializer.Serialize(value, value.GetType());
+        => reader.IsDBNull(ordinal) ? null : Guid.TryParse(reader.GetString(ordinal), out var id) ? id : null;
 }
 
-public sealed record StoredMarketObservationRecord(
+public sealed record MarketObservationRecordView(
+    Guid ObservationId,
+    string? CapturedAt,
+    MarketResponseKind ResponseKind);
+
+public sealed record MarketRecordView(
     long StorageRecordId,
-    Guid? ObservationId,
-    string ResponseType,
-    string ResponseKind,
+    string? ResponseType,
+    string? ResponseKind,
     string? OperationCode,
     string? CapturedAt,
     string? OrderId,
@@ -479,9 +422,5 @@ public sealed record StoredMarketObservationRecord(
     string? AuctionType,
     string? Expires,
     string? DistanceFee,
-    string? ResolvedLocation);
-
-public sealed record StoredMarketObservation(
-    Guid ObservationId,
-    DateTimeOffset? CapturedAt,
-    MarketResponseKind ResponseKind);
+    string? ResolvedLocation,
+    Guid? ObservationId);
