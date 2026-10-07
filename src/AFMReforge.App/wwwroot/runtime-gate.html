@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AFM Reforge — Runtime Gate</title>
+<style>
+:root{--bg:#0b0d12;--panel:#12161e;--panel2:#181d27;--line:#28303d;--text:#e7ebf2;--muted:#8993a3;--good:#72d6a1;--warn:#e2b96f;--danger:#e27b88}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.shell{max-width:1180px;margin:auto;padding:28px}.top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:20px}.top h1{margin:0;font-size:22px}.muted{color:var(--muted)}.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:14px}.summary{font-size:18px;font-weight:700}.gate{display:grid;grid-template-columns:48px 1fr auto;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}.gate:last-child{border-bottom:0}.code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--muted)}.status{font-weight:700}.PASS{color:var(--good)}.FAIL{color:var(--danger)}.UNKNOWN{color:var(--muted)}.PENDING{color:var(--warn)}button{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:7px;padding:8px 12px;cursor:pointer}.kv{display:grid;grid-template-columns:220px 1fr;gap:9px}.kv div:nth-child(odd){color:var(--muted)}input{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:7px;padding:8px 9px;width:360px}.row{display:flex;gap:8px;flex-wrap:wrap}.error{color:var(--danger)}@media(max-width:700px){.shell{padding:16px}.gate{grid-template-columns:38px 1fr}.gate .when{grid-column:2}.kv{grid-template-columns:1fr}input{width:100%}}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="top">
+    <div><h1>AFM Reforge — Runtime Integration Gate</h1><div class="muted">Runtime evidence only. No synthetic event is promoted to runtime success.</div></div>
+    <button onclick="load()">Refresh</button>
+  </div>
+  <section class="panel"><div class="muted">Overall Runtime Integration</div><div id="summary" class="summary">PENDING VALIDATION</div><div id="boundary" class="muted"></div></section>
+  <section class="panel"><h2>Gate status</h2><div id="gates"></div></section>
+  <section class="panel"><h2>Current diagnostics</h2><div id="details"></div></section>
+  <section class="panel"><h2>UI reflection verification</h2><div class="muted">Enter a persisted ObservationId after opening stored observation data. The server verifies that the observation exists before marking G9 PASS.</div><div class="row" style="margin-top:12px"><input id="observationId" placeholder="ObservationId"><button onclick="verifyReflection()">Verify persisted UI reflection</button></div><div id="reflectionResult" class="muted" style="margin-top:10px"></div></section>
+</div>
+<script>
+const $=id=>document.getElementById(id);const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const gateNames={AppProcess:"G0 App Process",HttpUi:"G1 HTTP / UI",AfmCore:"G2 AFM Core",Receiver:"G3 Receiver",PacketCapture:"G4 Packet Capture",MarketResponse:"G5 Market Response",Adapter:"G6 Adapter",Observation:"G7 Observation",Persistence:"G8 SQLite Persistence",UiReflection:"G9 UI Reflection"};
+async function api(url,options){const r=await fetch(url,options);if(!r.ok)throw new Error(await r.text());return r.json()}
+async function load(){try{const x=await api('/api/diagnostics');$('summary').textContent=x.runtimeSummary;$('summary').className='summary '+(x.runtimeSummary==='PASS'?'PASS':x.runtimeSummary==='FAIL'?'FAIL':'PENDING');$('boundary').textContent=x.firstFailureBoundary?'First failure boundary: '+x.firstFailureBoundary:'No failure boundary recorded.';$('gates').innerHTML=x.gates.map(g=>'<div class="gate"><div class="code">'+esc(gateNames[g.gate]||g.gate)+'</div><div class="status '+esc(g.status)+'">'+esc(g.status)+'</div><div class="when">'+esc(g.lastSuccessAt||'—')+(g.lastError?' · <span class="error">'+esc(g.lastError)+'</span>':'')+'</div></div>').join('');const rows=[['AFM Core',x.afmCoreStatus],['Receiver',x.receiverStatus],['Last Response Kind',x.lastResponseKind],['Last Response Time',x.lastResponseTime||'—'],['Response Record Count',x.lastResponseRecordCount??'—'],['Adapter Record Count',x.lastAdapterRecordCount??'—'],['Observation ID',x.lastObservationId||'—'],['Observation Record Count',x.lastObservationRecordCount??'—'],['Persistence Count',x.lastPersistenceCount??'—'],['Last Error',x.lastError||'NONE']];$('details').innerHTML='<div class="kv">'+rows.map(([k,v])=>'<div>'+esc(k)+'</div><div>'+esc(v)+'</div>').join('')+'</div>'}catch(e){$('summary').textContent='DIAGNOSTICS ERROR';$('summary').className='summary FAIL';$('details').innerHTML='<div class="error">'+esc(e.message)+'</div>'}}
+async function verifyReflection(){try{const id=$('observationId').value.trim();if(!id){$('reflectionResult').textContent='ObservationId is required.';return}await api('/api/diagnostics/ui-reflection?observationId='+encodeURIComponent(id),{method:'POST'});$('reflectionResult').textContent='G9 UI Reflection PASS: persisted observation verified and acknowledged by this UI.';await load()}catch(e){$('reflectionResult').textContent='G9 verification failed: '+e.message}}
+load();setInterval(load,3000);
+</script>
+</body>
+</html>
