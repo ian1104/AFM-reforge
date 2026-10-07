@@ -20,14 +20,22 @@ public sealed class AfmMarketAdapter
 
     public object BuildConfiguredReceiver(object afmCore)
     {
-        var builder = ReceiverBuilder.Create();
-        var register = afmCore.GetType().GetMethod("RegisterHandlers", BindingFlags.Instance | BindingFlags.Public)
-            ?? throw new InvalidOperationException("AFM Core does not expose RegisterHandlers(builder).");
-        register.Invoke(afmCore, [builder]);
-        RegisterTypedMarketSubscriptions(builder);
-        var receiver = builder.Build();
-        _diagnostics?.MarkReceiverInitialized();
-        return receiver;
+        try
+        {
+            var builder = ReceiverBuilder.Create();
+            var register = afmCore.GetType().GetMethod("RegisterHandlers", BindingFlags.Instance | BindingFlags.Public)
+                ?? throw new InvalidOperationException("AFM Core does not expose RegisterHandlers(builder).");
+            register.Invoke(afmCore, [builder]);
+            RegisterTypedMarketSubscriptions(builder);
+            var receiver = builder.Build();
+            _diagnostics?.MarkReceiverInitialized();
+            return receiver;
+        }
+        catch (Exception exception)
+        {
+            _diagnostics?.MarkGateFailure(RuntimeGate.Receiver, exception);
+            throw;
+        }
     }
 
     public void ProcessMockResponse<TResponse>(TResponse response) where TResponse : class
@@ -42,29 +50,38 @@ public sealed class AfmMarketAdapter
 
     public MarketObservationInput Map<TResponse>(TResponse response) where TResponse : class
     {
-        var kind = response switch
+        try
         {
-            AuctionGetOffersResponse => MarketResponseKind.Offers,
-            AuctionGetRequestsResponse => MarketResponseKind.Requests,
-            AuctionGetLoadoutOffersResponse => MarketResponseKind.LoadoutOffers,
-            _ => throw new ArgumentException($"Unsupported market response type: {response.GetType().FullName}", nameof(response))
-        };
+            var kind = response switch
+            {
+                AuctionGetOffersResponse => MarketResponseKind.Offers,
+                AuctionGetRequestsResponse => MarketResponseKind.Requests,
+                AuctionGetLoadoutOffersResponse => MarketResponseKind.LoadoutOffers,
+                _ => throw new ArgumentException($"Unsupported market response type: {response.GetType().FullName}", nameof(response))
+            };
 
-        var ordersValue = GetMember(response, "marketOrders");
-        var records = ordersValue is System.Collections.IEnumerable enumerable
-            ? enumerable.Cast<object>().Select(_marketOrderMapper.Map).ToArray()
-            : [];
+            var ordersValue = GetMember(response, "marketOrders");
+            var records = ordersValue is System.Collections.IEnumerable enumerable
+                ? enumerable.Cast<object>().Select(_marketOrderMapper.Map).ToArray()
+                : [];
 
-        var capturedAt = ToDateTimeOffset(GetMember(response, "CapturedAt"));
-        _diagnostics?.MarkMarketResponse(kind, records.Length, capturedAt);
-        _diagnostics?.MarkAdapterConversion(records.Length);
+            var capturedAt = ToDateTimeOffset(GetMember(response, "CapturedAt"));
+            _diagnostics?.MarkMarketResponse(kind, records.Length, capturedAt);
+            _diagnostics?.MarkAdapterConversion(records.Length);
 
-        return new MarketObservationInput(
-            response.GetType().Name,
-            kind,
-            GetMember(response, "OperationCode"),
-            capturedAt,
-            records);
+            return new MarketObservationInput(
+                response.GetType().Name,
+                kind,
+                GetMember(response, "OperationCode"),
+                capturedAt,
+                records);
+        }
+        catch (Exception exception)
+        {
+            _diagnostics?.MarkGateFailure(RuntimeGate.MarketResponse, exception);
+            _diagnostics?.MarkGateFailure(RuntimeGate.Adapter, exception);
+            throw;
+        }
     }
 
     private void Subscribe<TResponse>(object receiverBuilder) where TResponse : class
