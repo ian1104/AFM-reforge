@@ -12,11 +12,24 @@ public static class ReforgeUiEndpoints
 
         app.MapPost("/api/diagnostics/ui-reflection", (Guid? observationId, RuntimeDiagnosticsState diagnostics) =>
         {
-            if (observationId.HasValue && !store.ReadObservations().Any(x => x.ObservationId == observationId.Value))
+            if (!observationId.HasValue)
+                return Results.BadRequest(new { error = "ObservationId is required." });
+
+            var observation = store.ReadObservations().FirstOrDefault(x => x.ObservationId == observationId.Value);
+            if (observation is null)
                 return Results.NotFound(new { error = "Persisted observation was not found." });
 
+            var records = store.Query(new MarketRecordQuery(ObservationId: observationId.Value, Limit: 5000));
             diagnostics.MarkUiReflection();
-            return Results.Ok(diagnostics.Snapshot());
+
+            return Results.Ok(new
+            {
+                observationId = observation.ObservationId,
+                capturedAt = observation.CapturedAt,
+                responseKind = observation.ResponseKind.ToString(),
+                recordCount = records.Count,
+                diagnostics = diagnostics.Snapshot()
+            });
         });
 
         app.MapGet("/api/overview", () =>
